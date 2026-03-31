@@ -892,9 +892,19 @@ const ShortcutGenerator = () => {
                                       if (typeof option === 'string') return option;
                                       return option.label || option.value;
                                     }}
+                                    isOptionEqualToValue={(option, val) => {
+                                      const optVal = typeof option === 'string' ? option : option.value;
+                                      if (val == null) return false;
+                                      if (typeof val === 'string') return optVal === val;
+                                      return optVal === val.value;
+                                    }}
                                     value={suggestions.find(s => s.value === param.value) || param.value}
-                                    onInputChange={(_event, newValue) => {
-                                      handleSharedParamChange(param.id, param.key, newValue || '');
+                                    onInputChange={(_event, newValue, reason) => {
+                                      if (reason === 'input') {
+                                        handleSharedParamChange(param.id, param.key, newValue || '');
+                                      } else if (reason === 'clear') {
+                                        handleSharedParamChange(param.id, param.key, '');
+                                      }
                                     }}
                                     onChange={(_event, newValue) => {
                                       if (typeof newValue === 'string') {
@@ -1017,9 +1027,19 @@ const ShortcutGenerator = () => {
                                   if (typeof option === 'string') return option;
                                   return option.label || option.value;
                                 }}
+                                isOptionEqualToValue={(option, val) => {
+                                  const optVal = typeof option === 'string' ? option : option.value;
+                                  if (val == null) return false;
+                                  if (typeof val === 'string') return optVal === val;
+                                  return optVal === val.value;
+                                }}
                                 value={suggestions.find(s => s.value === newParamValue) || newParamValue}
-                                onInputChange={(_event, newValue) => {
-                                  setNewParamValue(newValue || '');
+                                onInputChange={(_event, newValue, reason) => {
+                                  if (reason === 'input') {
+                                    setNewParamValue(newValue || '');
+                                  } else if (reason === 'clear') {
+                                    setNewParamValue('');
+                                  }
                                 }}
                                 onChange={(_event, newValue) => {
                                   if (typeof newValue === 'string') {

@@ -624,19 +624,36 @@ pub async fn get_vmix_statuses(state: State<'_, AppState>) -> Result<Vec<VmixCon
         futures::future::join_all(http_futures)
     ).await.unwrap_or_else(|_| vec![None; http_connections.len()]);
 
-    // Process HTTP results
+    // Process HTTP results — align status with last_status_cache (Reconnecting) and use cache on poll timeout
     for (i, result) in http_results.into_iter().enumerate() {
-        if let Some((host, status, active_input, preview_input, version, edition, preset)) = result {
-            let label = {
-                let labels = state.connection_labels.lock().unwrap();
-                labels.get(&host).cloned().unwrap_or_else(|| format!("{} (HTTP)", host))
+        let host = http_connections[i].host().to_string();
+        let port = http_connections[i].port();
+        let label = {
+            let labels = state.connection_labels.lock().unwrap();
+            labels
+                .get(&host)
+                .cloned()
+                .unwrap_or_else(|| format!("{} (HTTP)", host))
+        };
+        let cached = {
+            let cache = state.last_status_cache.lock().unwrap();
+            cache.get(&host).cloned()
+        };
+
+        if let Some((_, live_ok, active_input, preview_input, version, edition, preset)) = result {
+            let status_str = if live_ok {
+                "Connected".to_string()
+            } else if cached.as_ref().map(|c| c.status.as_str()) == Some("Reconnecting") {
+                "Reconnecting".to_string()
+            } else {
+                "Disconnected".to_string()
             };
-            
+
             statuses.push(VmixConnection {
                 host,
-                port: http_connections[i].port(),
+                port,
                 label,
-                status: if status { "Connected".to_string() } else { "Disconnected".to_string() },
+                status: status_str,
                 active_input,
                 preview_input,
                 connection_type: ConnectionType::Http,
@@ -644,17 +661,15 @@ pub async fn get_vmix_statuses(state: State<'_, AppState>) -> Result<Vec<VmixCon
                 edition,
                 preset,
             });
+        } else if let Some(mut vmix_conn) = cached {
+            vmix_conn.port = port;
+            vmix_conn.label = label;
+            vmix_conn.connection_type = ConnectionType::Http;
+            statuses.push(vmix_conn);
         } else {
-            // Add disconnected status for timed out connections
-            let host = http_connections[i].host().to_string();
-            let label = {
-                let labels = state.connection_labels.lock().unwrap();
-                labels.get(&host).cloned().unwrap_or_else(|| format!("{} (HTTP)", host))
-            };
-            
             statuses.push(VmixConnection {
                 host,
-                port: http_connections[i].port(),
+                port,
                 label,
                 status: "Disconnected".to_string(),
                 active_input: 0,
