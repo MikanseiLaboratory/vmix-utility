@@ -382,11 +382,12 @@ const ShortcutGenerator = () => {
       return suggestions;
     }
     
-    // Mix parameter - suggest mix numbers only
+    // Mix parameter: vMix HTTP API uses 0-based index (Mix N in UI → Mix=N-1 in query).
+    // Fixed range 2–16 regardless of connection/input state.
     if (key === 'mix') {
       const suggestions: Array<{ value: string; label: string }> = [];
-      for (let i = 1; i <= 4; i++) {
-        suggestions.push({ value: i.toString(), label: `Mix ${i}` });
+      for (let i = 2; i <= 16; i++) {
+        suggestions.push({ value: (i - 1).toString(), label: `Mix ${i}` });
       }
       return suggestions;
     }
@@ -882,6 +883,7 @@ const ShortcutGenerator = () => {
                             {(() => {
                               const suggestions = getParameterValueSuggestions(param.key);
                               const isNumeric = isNumericParameter(param.key);
+                              const isMixParam = param.key.toLowerCase() === 'mix';
                               
                               if (suggestions.length > 0) {
                                 return (
@@ -890,6 +892,7 @@ const ShortcutGenerator = () => {
                                     options={suggestions}
                                     getOptionLabel={(option) => {
                                       if (typeof option === 'string') return option;
+                                      if (isMixParam) return option.value;
                                       return option.label || option.value;
                                     }}
                                     isOptionEqualToValue={(option, val) => {
@@ -913,20 +916,29 @@ const ShortcutGenerator = () => {
                                         handleSharedParamChange(param.id, param.key, newValue.value);
                                       }
                                     }}
-                                    renderInput={(params) => (
-                                      <TextField
-                                        {...params}
-                                        size="small"
-                                        placeholder="Value"
-                                        variant="outlined"
-                                        type={isNumeric ? 'number' : 'text'}
-                                        sx={{ 
-                                          '& .MuiOutlinedInput-root': {
-                                            fontSize: '0.875rem'
-                                          }
-                                        }}
-                                      />
-                                    )}
+                                    renderInput={(params) => {
+                                      const { inputProps, ...textFieldParams } = params;
+                                      return (
+                                        <TextField
+                                          {...textFieldParams}
+                                          size="small"
+                                          placeholder="Value"
+                                          variant="outlined"
+                                          type="text"
+                                          slotProps={{
+                                            htmlInput: {
+                                              ...inputProps,
+                                              ...(isNumeric ? { inputMode: 'numeric' as const } : {}),
+                                            },
+                                          }}
+                                          sx={{ 
+                                            '& .MuiOutlinedInput-root': {
+                                              fontSize: '0.875rem'
+                                            }
+                                          }}
+                                        />
+                                      );
+                                    }}
                                     renderOption={(props, option) => (
                                       <Box component="li" {...props}>
                                         <Typography variant="body2">
@@ -1017,6 +1029,7 @@ const ShortcutGenerator = () => {
                         {(() => {
                           const suggestions = getParameterValueSuggestions(newParamKey);
                           const isNumeric = isNumericParameter(newParamKey);
+                          const isMixParam = newParamKey.toLowerCase() === 'mix';
                           
                           if (suggestions.length > 0) {
                             return (
@@ -1025,6 +1038,7 @@ const ShortcutGenerator = () => {
                                 options={suggestions}
                                 getOptionLabel={(option) => {
                                   if (typeof option === 'string') return option;
+                                  if (isMixParam) return option.value;
                                   return option.label || option.value;
                                 }}
                                 isOptionEqualToValue={(option, val) => {
@@ -1048,25 +1062,34 @@ const ShortcutGenerator = () => {
                                     setNewParamValue(newValue.value);
                                   }
                                 }}
-                                renderInput={(params) => (
-                                  <TextField
-                                    {...params}
-                                    placeholder="Value"
-                                    size="small"
-                                    variant="outlined"
-                                    type={isNumeric ? 'number' : 'text'}
-                                    sx={{ 
-                                      '& .MuiOutlinedInput-root': {
-                                        fontSize: '0.875rem'
-                                      }
-                                    }}
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter' && newParamKey && newParamValue) {
-                                        handleAddSharedParam();
-                                      }
-                                    }}
-                                  />
-                                )}
+                                renderInput={(params) => {
+                                  const { inputProps, ...textFieldParams } = params;
+                                  return (
+                                    <TextField
+                                      {...textFieldParams}
+                                      placeholder="Value"
+                                      size="small"
+                                      variant="outlined"
+                                      type="text"
+                                      slotProps={{
+                                        htmlInput: {
+                                          ...inputProps,
+                                          ...(isNumeric ? { inputMode: 'numeric' as const } : {}),
+                                        },
+                                      }}
+                                      sx={{ 
+                                        '& .MuiOutlinedInput-root': {
+                                          fontSize: '0.875rem'
+                                        }
+                                      }}
+                                      onKeyPress={(e) => {
+                                        if (e.key === 'Enter' && newParamKey && newParamValue) {
+                                          handleAddSharedParam();
+                                        }
+                                      }}
+                                    />
+                                  );
+                                }}
                                 renderOption={(props, option) => (
                                   <Box component="li" {...props}>
                                     <Typography variant="body2">
