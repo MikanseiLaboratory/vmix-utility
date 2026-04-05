@@ -317,7 +317,7 @@ SOFTWARE.`}
                   primary={
                     <Link
                       component="button"
-                      onClick={() => openInBrowser(`${repositoryUrl}/wiki`)}
+                      onClick={() => openInBrowser(`${repositoryUrl}`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
                       Documentation
