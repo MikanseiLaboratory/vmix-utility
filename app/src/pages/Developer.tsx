@@ -35,7 +35,7 @@ const TwitchIcon = (props: SvgIconProps) => (
 const Developer = () => {
   const { resolvedTheme } = useTheme();
   const repositoryUrl = 'https://github.com/Incomplete-Outputs-Lab/vmix-utility';
-  const developerGitHub = 'https://github.com/FlowingSPDG';
+  const developerGitHub = 'https://github.com/Incomplete-Outputs-Lab';
   const twitchSupportUrl = 'https://subs.twitch.tv/flowingspdg';
 
   const openInBrowser = (url: string) => {
@@ -118,7 +118,7 @@ const Developer = () => {
                 fullWidth
                 sx={{ mt: 2 }}
               >
-                Visit GitHub Profile
+                Visit GitHub Organization
               </Button>
             </CardContent>
           </Card>
