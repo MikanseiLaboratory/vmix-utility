@@ -21,6 +21,7 @@ import {
   Code,
   FavoriteOutlined,
   Description,
+  Public,
 } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { SvgIconProps } from '@mui/material/SvgIcon';
@@ -34,8 +35,9 @@ const TwitchIcon = (props: SvgIconProps) => (
 
 const Developer = () => {
   const { resolvedTheme } = useTheme();
-  const repositoryUrl = 'https://github.com/Incomplete-Outputs-Lab/vmix-utility';
-  const developerGitHub = 'https://github.com/Incomplete-Outputs-Lab';
+  const repositoryUrl = 'https://github.com/MikanseiLaboratory/vmix-utility';
+  const developerGitHub = 'https://github.com/MikanseiLaboratory';
+  const mikanseiLaboratoryUrl = 'https://mikanseilaboratory.github.io/';
   const twitchSupportUrl = 'https://subs.twitch.tv/flowingspdg';
 
   const openInBrowser = (url: string) => {
@@ -102,24 +104,33 @@ const Developer = () => {
                     未完成成果物研究所
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Developer & Maintainer
+                    MikanseiLaboratory · Broadcast · Stream · Engineering
                   </Typography>
                 </Box>
               </Box>
-              
-              <Typography variant="body2" gutterBottom>
-                Development team creating tools to enhance live streaming workflows and broadcasting technology.
+
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                配信プロダクション向けツールとハードウェア機材の研究開発を行う技術者コミュニティです。完成の一歩手前にある成果物から、本質的な課題解決を目指しています。
               </Typography>
-              
-              <Button
-                variant="outlined"
-                startIcon={<GitHub />}
-                onClick={() => openInBrowser(developerGitHub)}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                Visit GitHub Organization
-              </Button>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<Public />}
+                  onClick={() => openInBrowser(mikanseiLaboratoryUrl)}
+                  fullWidth
+                >
+                  未完成成果物研究所（公式サイト）
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<GitHub />}
+                  onClick={() => openInBrowser(developerGitHub)}
+                  fullWidth
+                >
+                  Visit GitHub Organization
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid2>
@@ -186,7 +197,7 @@ const Developer = () => {
               <Typography variant="body2" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                 {`MIT License
 
-Copyright (c) 2020 未完成成果物研究所
+Copyright (c) 2026 未完成成果物研究所
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -306,7 +317,7 @@ SOFTWARE.`}
                   primary={
                     <Link
                       component="button"
-                      onClick={() => openInBrowser(`${repositoryUrl}/wiki`)}
+                      onClick={() => openInBrowser(`${repositoryUrl}`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
                       Documentation

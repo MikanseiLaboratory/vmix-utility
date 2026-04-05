@@ -1,19 +1,16 @@
 # vmix-utility
 
-[![Test Build](https://github.com/Incomplete-Outputs-Lab/vmix-utility/actions/workflows/test-build.yml/badge.svg)](https://github.com/Incomplete-Outputs-Lab/vmix-utility/actions/workflows/test-build.yml)
-[![Publish Release](https://github.com/Incomplete-Outputs-Lab/vmix-utility/actions/workflows/release.yml/badge.svg)](https://github.com/Incomplete-Outputs-Lab/vmix-utility/actions/workflows/release.yml)
+[![Test Build](https://github.com/MikanseiLaboratory/vmix-utility/actions/workflows/test-build.yml/badge.svg)](https://github.com/MikanseiLaboratory/vmix-utility/actions/workflows/test-build.yml)
+[![Publish Release](https://github.com/MikanseiLaboratory/vmix-utility/actions/workflows/release.yml/badge.svg)](https://github.com/MikanseiLaboratory/vmix-utility/actions/workflows/release.yml)
 
 ### About / 概要
 
-A desktop application for managing vMix connections and operations. Built with Tauri (Rust + React).
-
-vMix接続と操作を管理するデスクトップアプリケーション。Tauri（Rust + React）で構築されています。
+vmix-utilityは、vMix接続とオペレーションを最適化するデスクトップアプリケーションです。Tauri（Rust + React）で構築されています。
 
 ### Installation / インストール
 
-Download the latest version for your platform from [Releases](https://github.com/Incomplete-Outputs-Lab/vmix-utility/releases):
 
-[Releases](https://github.com/Incomplete-Outputs-Lab/vmix-utility/releases)から最新版をダウンロードしてください：
+GitHub [Releases](https://github.com/MikanseiLaboratory/vmix-utility/releases)から最新版をダウンロードしてください。
 
 - **Windows**: `.msi` installer
 - **macOS**: `.dmg` file (Intel and Apple Silicon)
@@ -21,26 +18,28 @@ Download the latest version for your platform from [Releases](https://github.com
 
 ### Features / 機能
 
-- **Connections** - Manage vMix connections / vMix接続を管理
-- **Shortcut Generator** - Create function shortcuts / Shortcut FunctionのURLを作成
-- **Blank Generator** - Generate blank/color inputs / Blank/Colours入力を生成
-- **Input Manager** - Browse and manage inputs / Inputを閲覧・管理
-- **List Manager** - Manage input lists / Input Listを管理
-- **Settings** - Configure application / 設定
-- **Developer** - Developer / 開発者について
+- **Connections** - vMix接続を追加・管理するページします。
+- **Shortcut Generator** - Shortcut FunctionのURLを作成します。
+- **Blank Generator** - Blank/Colours入力を一括生成します。
+- **Input Manager** - Inputを閲覧・管理します。
+- **List Manager** - Input Listを閲覧・管理します。
+- **Settings** - 設定です。
+- **Developer** - 開発者についての情報を表示します。
 
 ### License / ライセンス
-
-MIT License - see [LICENSE](LICENSE) file for details.
 
 MITライセンス - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
 
 ### Links / リンク
 
-- [Download Latest Release](https://github.com/Incomplete-Outputs-Lab/vmix-utility/releases/latest)
-- [Report Issues](https://github.com/Incomplete-Outputs-Lab/vmix-utility/issues)
+- [Download Latest Release](https://github.com/MikanseiLaboratory/vmix-utility/releases/latest)
+- [Report Issues](https://github.com/MikanseiLaboratory/vmix-utility/issues)
 - [vMix Official Website](https://www.vmix.com/)
 
 ### Developer / 開発者
 
-**未完成成果物研究所**
+[未完成成果物研究所](https://mikanseilaboratory.github.io/) が保守管理しています。
+
+### 寄付・ご支援について
+
+[twitch.tv/flowingspdg](https://subs.twitch.tv/flowingspdg) にてご支援が可能です。Amazon Primeを利用したサブスクライブか、ビッツを使った投げ銭が可能です。

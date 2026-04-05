@@ -1,0 +1,37 @@
+name: 機能の要望
+description: 新機能の追加や改善を提案する
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 機能要望の取り扱いについて
+
+        **ご支援（Twitch サブスクリプション等）をいただいていない方からの機能追加・改善のご要望には、原則として対応いたしません。** 開発リソースの都合上、ご了承ください。
+
+        ご支援いただける場合は、次のページから Twitch サブスクリプション（開発支援）をご利用ください。
+
+        - **支援 URL**: https://subs.twitch.tv/flowingspdg
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: どんな機能・改善がほしいかを簡潔に。
+      placeholder: 例）Input Manager で複数選択して一括削除したい
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 機能の詳細
+      description: 利用シーン、画面イメージ、既存機能との関係など。できるだけ具体的に書いてください。
+      placeholder: |
+        - いつ・何をしているときに困るか
+        - 望む動作や UI のイメージ
+        - 他ツールでの参考例（あれば）
+    validations:
+      required: true
