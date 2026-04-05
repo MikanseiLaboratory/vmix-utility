@@ -1,4 +1,4 @@
-module github.com/Incomplete-Outputs-Lab/vmix-utility/scraper
+module github.com/MikanseiLaboratory/vmix-utility/scraper
 
 go 1.24.0
 

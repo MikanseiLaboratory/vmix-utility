@@ -34,8 +34,8 @@ const TwitchIcon = (props: SvgIconProps) => (
 
 const Developer = () => {
   const { resolvedTheme } = useTheme();
-  const repositoryUrl = 'https://github.com/Incomplete-Outputs-Lab/vmix-utility';
-  const developerGitHub = 'https://github.com/Incomplete-Outputs-Lab';
+  const repositoryUrl = 'https://github.com/MikanseiLaboratory/vmix-utility';
+  const developerGitHub = 'https://github.com/MikanseiLaboratory';
   const twitchSupportUrl = 'https://subs.twitch.tv/flowingspdg';
 
   const openInBrowser = (url: string) => {
@@ -102,7 +102,7 @@ const Developer = () => {
                     未完成成果物研究所
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Developer & Maintainer
+                    MikanseiLaboratory · Developer & Maintainer
                   </Typography>
                 </Box>
               </Box>
@@ -186,7 +186,7 @@ const Developer = () => {
               <Typography variant="body2" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                 {`MIT License
 
-Copyright (c) 2020 未完成成果物研究所
+Copyright (c) 2026 未完成成果物研究所
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,0 +1,75 @@
+name: バグ報告
+description: 不具合・期待と異なる動作を報告する
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        不具合の報告ありがとうございます。分かる範囲でご記入ください。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 何が問題か、一言〜数行でまとめてください。
+      placeholder: 例）Shortcut Generator で保存したURLが開かない
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: できるだけ「1. … 2. …」のように順序立てて書いてください。
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待される動作
+      description: 本来どうあるべきか。
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      description: いま起きていること（エラーメッセージがあればそのまま貼り付けてください）。
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境
+      description: OS、アプリのバージョン、必要なら vMix のバージョンなど。
+      placeholder: |
+        - OS: Windows 11 など
+        - vmix-utility: vX.Y.Z（Releases のバージョン）
+        - vMix: 27 など
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: スクリーンショット・動画（任意）
+      description: 画像や動画は Issue 作成後のコメント欄にドラッグ＆ドロップで添付するか、外部 URL を記載してください。
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 補足（任意）
+      description: 再現率、回避策、関連する Issue 番号など。
+    validations:
+      required: false

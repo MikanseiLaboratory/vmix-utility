@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/Incomplete-Outputs-Lab/vmix-utility/scraper"
+	"github.com/MikanseiLaboratory/vmix-utility/scraper"
 )
 
 var (
