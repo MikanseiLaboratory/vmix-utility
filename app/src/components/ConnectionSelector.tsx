@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FormControl,
   InputLabel,
@@ -20,15 +21,18 @@ interface ConnectionSelectorProps {
 const ConnectionSelector = memo<ConnectionSelectorProps>(({
   selectedConnection,
   onConnectionChange,
-  label = 'vMix Connection',
+  label,
   size = 'small',
   fullWidth = true,
   sx = {}
 }) => {
+  const { t } = useTranslation();
+  const resolvedLabel = label ?? t('connectionSelector.defaultLabel');
+
   const { connections } = useVMixStatus();
-  
-  const connectedConnections = useMemo(() => 
-    connections.filter(conn => conn.status === 'Connected'), 
+
+  const connectedConnections = useMemo(() =>
+    connections.filter(conn => conn.status === 'Connected'),
     [connections]
   );
 
@@ -36,24 +40,23 @@ const ConnectionSelector = memo<ConnectionSelectorProps>(({
     onConnectionChange(event.target.value);
   }, [onConnectionChange]);
 
-  // Use stable labelId based on component identity rather than random
-  const labelId = useMemo(() => 
-    `connection-select-label-${label.replace(/\s+/g, '-').toLowerCase()}`, 
-    [label]
+  const labelId = useMemo(() =>
+    `connection-select-label-${resolvedLabel.replace(/\s+/g, '-').toLowerCase()}`,
+    [resolvedLabel]
   );
 
   return (
     <FormControl fullWidth={fullWidth} sx={sx}>
-      <InputLabel id={labelId}>{label}</InputLabel>
+      <InputLabel id={labelId}>{resolvedLabel}</InputLabel>
       <Select
         labelId={labelId}
         value={selectedConnection}
-        label={label}
+        label={resolvedLabel}
         onChange={handleChange}
         size={size}
       >
         <MenuItem value="">
-          <em>Select a vMix connection</em>
+          <em>{t('connectionSelector.selectPlaceholder')}</em>
         </MenuItem>
         {connectedConnections.map((conn) => (
           <MenuItem key={conn.host} value={conn.host}>

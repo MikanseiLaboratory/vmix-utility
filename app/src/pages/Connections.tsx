@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { settingsService } from '../services/settingsService';
 import { NetworkScannerService, type NetworkInterface, type VmixScanResult } from '../services/networkScannerService';
@@ -57,6 +58,7 @@ interface Connection {
 }
 
 const Connections: React.FC = () => {
+  const { t } = useTranslation();
   const { connections: vmixConnections, loading: globalLoading, connectVMix, disconnectVMix, autoRefreshConfigs, setAutoRefreshConfig, refreshConnections } = useVMixStatus();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +169,7 @@ const Connections: React.FC = () => {
     const isDuplicate = connections.some(conn => conn.host === trimmedHost);
     
     if (isDuplicate) {
-      setError(`Host ${trimmedHost} is already connected`);
+      setError(t('connections.duplicateHost', { host: trimmedHost }));
       return;
     }
     
@@ -187,7 +189,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: trimmedHost,
         success: true,
-        message: `Successfully connected to ${trimmedHost}`
+        message: t('connections.successConnect', { host: trimmedHost })
       }]);
     } catch (error) {
       console.error('Failed to connect:', error);
@@ -196,7 +198,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: trimmedHost,
         success: false,
-        message: `Failed to connect to ${trimmedHost}: ${error}`
+        message: t('connections.failConnect', { host: trimmedHost, error: String(error) })
       }]);
     } finally {
       // Remove from background connections
@@ -224,7 +226,7 @@ const Connections: React.FC = () => {
         await disconnectVMix(connectionToDelete.host);
       } catch (error) {
         console.error('Failed to disconnect:', error);
-        setError(`Failed to disconnect from ${connectionToDelete.host}: ${error}`);
+        setError(t('connections.failDisconnect', { host: connectionToDelete.host, error: String(error) }));
       }
     }
     setDeleteDialogOpen(false);
@@ -246,7 +248,7 @@ const Connections: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load network interfaces:', error);
-      setError(`Failed to load network interfaces: ${error}`);
+      setError(t('connections.failInterfaces', { error: String(error) }));
     }
   };
 
@@ -276,7 +278,7 @@ const Connections: React.FC = () => {
       setScanResults(results);
     } catch (error) {
       console.error('Network scan failed:', error);
-      setScanError(`Network scan failed: ${error}`);
+      setScanError(t('connections.failScan', { error: String(error) }));
     } finally {
       setIsScanning(false);
     }
@@ -297,7 +299,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: ipAddress,
         success: true,
-        message: `Successfully connected to ${ipAddress}`
+        message: t('connections.successConnect', { host: ipAddress })
       }]);
     } catch (error) {
       console.error('Failed to connect to scanned vMix:', error);
@@ -306,7 +308,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: ipAddress,
         success: false,
-        message: `Failed to connect to ${ipAddress}: ${error}`
+        message: t('connections.failConnect', { host: ipAddress, error: String(error) })
       }]);
     } finally {
       // Remove from background connections
@@ -331,7 +333,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: connection.host,
         success: true,
-        message: `Successfully reconnected to ${connection.host}`
+        message: t('connections.successReconnect', { host: connection.host })
       }]);
     } catch (error) {
       console.error('Failed to reconnect:', error);
@@ -340,7 +342,7 @@ const Connections: React.FC = () => {
       setConnectionNotifications(prev => [...prev, {
         host: connection.host,
         success: false,
-        message: `Failed to reconnect to ${connection.host}: ${error}`
+        message: t('connections.failReconnect', { host: connection.host, error: String(error) })
       }]);
     } finally {
       // Remove from background connections
@@ -381,7 +383,7 @@ const Connections: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update label:', error);
-      setError(`Failed to update label: ${error}`);
+      setError(t('connections.failLabel', { error: String(error) }));
       // Even if there's an error, close the modal for disconnected connections
       if (editingConnection.status === 'Disconnected') {
         setLabelDialogOpen(false);
@@ -405,12 +407,12 @@ const Connections: React.FC = () => {
         <CardContent>
           <CircularProgress size={60} sx={{ mb: 2 }} />
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Loading vMix Connections
+            {t('connections.loadingBackdrop')}
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            {connections.length > 0 
-              ? `Found ${connections.length} saved connection${connections.length > 1 ? 's' : ''}`
-              : 'Checking for saved connections...'
+            {connections.length > 0
+              ? t(connections.length > 1 ? 'connections.foundConnections_plural' : 'connections.foundConnections', { count: connections.length })
+              : t('connections.checkingSaved')
             }
           </Typography>
         </CardContent>
@@ -424,7 +426,7 @@ const Connections: React.FC = () => {
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h1">
-          vMix Connections
+          {t('connections.title')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button 
@@ -432,14 +434,14 @@ const Connections: React.FC = () => {
             startIcon={<WifiIcon />}
             onClick={handleScanClick}
           >
-            Auto Detect vMix
+            {t('connections.autoDetect')}
           </Button>
           <Button 
             variant="contained" 
             startIcon={<AddIcon />}
             onClick={handleClickOpen}
           >
-            Add Connection
+            {t('connections.addConnection')}
           </Button>
         </Box>
       </Box>
@@ -460,7 +462,7 @@ const Connections: React.FC = () => {
               size="small"
             />
           }
-          label="Show full paths"
+          label={t('connections.showFullPaths')}
           labelPlacement="start"
           sx={{ ml: 0, mr: 0 }}
         />
@@ -489,77 +491,77 @@ const Connections: React.FC = () => {
                 py: 1.5, 
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Host</TableCell>
+              }}>{t('connections.host')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '50px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Port</TableCell>
+              }}>{t('connections.port')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '50px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Type</TableCell>
+              }}>{t('connections.type')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '70px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Status</TableCell>
+              }}>{t('connections.status')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '80px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Version</TableCell>
+              }}>{t('connections.version')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '60px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Edition</TableCell>
+              }}>{t('connections.edition')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '80px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Preset</TableCell>
+              }}>{t('connections.preset')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '120px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Update Interval</TableCell>
+              }}>{t('connections.updateInterval')}</TableCell>
               <TableCell align="right" sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '50px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Active</TableCell>
+              }}>{t('connections.active')}</TableCell>
               <TableCell align="right" sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '50px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Preview</TableCell>
+              }}>{t('connections.preview')}</TableCell>
               <TableCell align="right" sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
                 width: '120px',
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>Actions</TableCell>
+              }}>{t('connections.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -569,7 +571,7 @@ const Connections: React.FC = () => {
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <CircularProgress />
                     <Typography variant="body2" color="textSecondary">
-                      Loading connections and checking vMix status...
+                      {t('connections.loadingRow')}
                     </Typography>
                   </Box>
                 </TableCell>
@@ -578,7 +580,7 @@ const Connections: React.FC = () => {
               <TableRow>
                 <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">
-                    No vMix connections. Add a connection to get started.
+                    {t('connections.empty')}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -590,13 +592,13 @@ const Connections: React.FC = () => {
                   id: -(index + 1), // Temporary negative ID for background connections
                   host,
                   port: 8088, // Default port, will be updated when connection is established
-                  label: `${host} (Connecting...)`,
+                  label: t('connections.connectingLabel', { host }),
                   status: 'Reconnecting' as const,
                   activeInput: 0,
                   previewInput: 0,
                   connectionType: 'Http' as const, // Default type, will be updated when connection is established
-                  version: 'Connecting...',
-                  edition: 'Connecting...',
+                  version: t('connections.connectingEllipsis'),
+                  edition: t('connections.connectingEllipsis'),
                   preset: undefined,
                 }))
               ].map((connection, index) => (
@@ -653,7 +655,7 @@ const Connections: React.FC = () => {
                       <IconButton
                         size="small"
                         onClick={() => handleEditLabel(connection)}
-                        title="Edit Label"
+                        title={t('connections.editLabel')}
                         sx={{ 
                           padding: '4px',
                           opacity: 0.7,
@@ -695,7 +697,7 @@ const Connections: React.FC = () => {
                         fontWeight: 500,
                       }}
                     >
-                      {connection.connectionType === 'Tcp' ? 'TCP' : 'HTTP'}
+                      {connection.connectionType === 'Tcp' ? t('connections.tcp') : t('connections.http')}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ 
@@ -713,7 +715,7 @@ const Connections: React.FC = () => {
                               fontWeight: 500,
                             }}
                           >
-                            Connecting
+                            {t('connections.connecting')}
                           </Typography>
                           <CircularProgress size={12} thickness={4} />
                         </>
@@ -731,7 +733,11 @@ const Connections: React.FC = () => {
                               fontWeight: 500,
                             }}
                           >
-                            {connection.status === 'Reconnecting' ? 'Retrying' : connection.status}
+                            {connection.status === 'Reconnecting' ? t('connections.retrying') : (
+                              connection.status === 'Connected' ? t('connections.statusConnected') :
+                              connection.status === 'Disconnected' ? t('connections.statusDisconnected') :
+                              connection.status
+                            )}
                           </Typography>
                           {connection.status === 'Reconnecting' && (
                             <CircularProgress size={12} thickness={4} />
@@ -856,7 +862,7 @@ const Connections: React.FC = () => {
                               fontWeight: 500,
                             }}
                           >
-                            ms
+                            {t('common.ms')}
                           </Typography>
                         </Box>
                       );
@@ -916,7 +922,7 @@ const Connections: React.FC = () => {
                             fontWeight: 500,
                           }}
                         >
-                          Connecting...
+                          {t('connections.connectingEllipsis')}
                         </Typography>
                       </Box>
                     ) : (
@@ -925,7 +931,7 @@ const Connections: React.FC = () => {
                           <IconButton
                             color="primary"
                             onClick={() => handleReconnect(connection)}
-                            title="Reconnect"
+                            title={t('connections.reconnect')}
                             size="small"
                             sx={{ 
                               padding: '6px',
@@ -943,7 +949,7 @@ const Connections: React.FC = () => {
                           color="error" 
                           onClick={() => handleDelete(connection.id)}
                           size="small"
-                          title="Delete"
+                          title={t('connections.delete')}
                           sx={{ 
                             padding: '6px',
                             '&:hover': {
@@ -966,26 +972,26 @@ const Connections: React.FC = () => {
       </TableContainer>
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New vMix Connection</DialogTitle>
+        <DialogTitle>{t('connections.dialogAddTitle')}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             id="host"
-            label="Host (IP Address or Hostname)"
+            label={t('connections.hostFieldLabel')}
             type="text"
             fullWidth
             variant="outlined"
             value={newHost}
             onChange={(e) => setNewHost(e.target.value)}
-            placeholder="192.168.1.6 or localhost"
-            helperText="Enter the IP address or hostname of your vMix instance"
+            placeholder={t('connections.hostPlaceholder')}
+            helperText={t('connections.hostHelper')}
             sx={{ mb: 2 }}
           />
           <TextField
             margin="dense"
             id="port"
-            label="Port"
+            label={t('connections.portFieldLabel')}
             type="number"
             fullWidth
             variant="outlined"
@@ -995,8 +1001,8 @@ const Connections: React.FC = () => {
                 setNewPort(parseInt(e.target.value) || 8088);
               }
             }}
-            placeholder={newConnectionType === 'Tcp' ? "8099" : "8088"}
-            helperText={newConnectionType === 'Tcp' ? "TCP API port (fixed: 8099)" : "HTTP API port (default: 8088)"}
+            placeholder={newConnectionType === 'Tcp' ? t('connections.portPlaceholderTcp') : t('connections.portPlaceholderHttp')}
+            helperText={newConnectionType === 'Tcp' ? t('connections.portHelperTcp') : t('connections.portHelperHttp')}
             disabled={newConnectionType === 'Tcp'}
             InputProps={{
               inputProps: {
@@ -1006,7 +1012,7 @@ const Connections: React.FC = () => {
             }}
           />
           <FormControl component="fieldset" sx={{ mt: 2, mb: 1 }}>
-            <FormLabel component="legend">Connection Type</FormLabel>
+            <FormLabel component="legend">{t('connections.connectionType')}</FormLabel>
             <RadioGroup
               row
               value={newConnectionType}
@@ -1015,12 +1021,12 @@ const Connections: React.FC = () => {
               <FormControlLabel
                 value="Http"
                 control={<Radio />}
-                label="HTTP API"
+                label={t('connections.httpApi')}
               />
               <FormControlLabel
                 value="Tcp"
                 control={<Radio />}
-                label="TCP API (Experimental)"
+                label={t('connections.tcpApi')}
               />
             </RadioGroup>
           </FormControl>
@@ -1032,49 +1038,49 @@ const Connections: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button 
             onClick={handleAdd} 
             variant="contained" 
             disabled={!newHost.trim()}
           >
-            Add Connection
+            {t('connections.addConnection')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Label Edit Dialog */}
       <Dialog open={labelDialogOpen} onClose={handleLabelCancel} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Connection Label</DialogTitle>
+        <DialogTitle>{t('connections.labelDialogTitle')}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Host: {editingConnection?.host}
+            {t('connections.hostPrefix')} {editingConnection?.host}
           </Typography>
           <TextField
             autoFocus
             margin="dense"
             id="label"
-            label="Label"
+            label={t('common.label')}
             type="text"
             fullWidth
             variant="outlined"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            placeholder="Enter a friendly name for this connection"
-            helperText="Give this vMix connection a memorable name"
+            placeholder={t('connections.labelPlaceholder')}
+            helperText={t('connections.labelHelper')}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleLabelCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button 
             onClick={handleLabelSave} 
             variant="contained" 
             disabled={!newLabel.trim()}
           >
-            Save
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1087,20 +1093,19 @@ const Connections: React.FC = () => {
         aria-describedby="delete-dialog-description"
       >
         <DialogTitle id="delete-dialog-title">
-          Delete Connection
+          {t('connections.deleteTitle')}
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
-            Are you sure you want to delete the connection to "{connectionToDelete?.label}" ({connectionToDelete?.host})?
-            This will disconnect from the vMix instance and remove it from your saved connections.
+            {t('connections.deleteConfirm', { label: connectionToDelete?.label ?? '', host: connectionToDelete?.host ?? '' })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeleteCancel} color="primary">
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            Delete
+            {t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1115,20 +1120,18 @@ const Connections: React.FC = () => {
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <WifiIcon />
-            Auto Detect vMix Instances
+            {t('connections.scanTitle')}
           </Box>
         </DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
             <Typography variant="body2">
-              <strong>Warning:</strong> This will scan your network for vMix instances. 
-              The scan will attempt to connect to all IP addresses in the selected network interface's subnet.
-              Only use this feature on networks you trust.
+              {t('connections.scanWarning')}
             </Typography>
           </Alert>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <FormLabel>Select Network Interface</FormLabel>
+            <FormLabel>{t('connections.selectInterface')}</FormLabel>
             <Select
               value={selectedInterface}
               onChange={(e) => setSelectedInterface(e.target.value)}
@@ -1151,16 +1154,16 @@ const Connections: React.FC = () => {
           {scanResults.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="h6" sx={{ mb: 1 }}>
-                Scan Results ({scanResults.length} devices found)
+                {t('connections.scanResults', { count: scanResults.length })}
               </Typography>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell>IP Address</TableCell>
-                      <TableCell>Preset</TableCell>
-                      <TableCell>Response Time</TableCell>
-                      <TableCell>Action</TableCell>
+                      <TableCell>{t('connections.ipAddress')}</TableCell>
+                      <TableCell>{t('connections.preset')}</TableCell>
+                      <TableCell>{t('connections.responseTime')}</TableCell>
+                      <TableCell>{t('connections.action')}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1170,7 +1173,7 @@ const Connections: React.FC = () => {
                         <TableCell>
                           <Typography variant="body2">{result.preset || '-'}</Typography>
                         </TableCell>
-                        <TableCell>{result.response_time}ms</TableCell>
+                        <TableCell>{result.response_time}{t('common.ms')}</TableCell>
                         <TableCell>
                           {result.is_vmix && (
                             <Button
@@ -1179,7 +1182,7 @@ const Connections: React.FC = () => {
                               onClick={() => handleConnectFromScan(result.ip_address)}
                               disabled={connections.some(conn => conn.host === result.ip_address)}
                             >
-                              {connections.some(conn => conn.host === result.ip_address) ? 'Connected' : 'Connect'}
+                              {connections.some(conn => conn.host === result.ip_address) ? t('connections.connected') : t('connections.connect')}
                             </Button>
                           )}
                         </TableCell>
@@ -1193,7 +1196,7 @@ const Connections: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleScanClose} disabled={isScanning}>
-            Close
+            {t('common.close')}
           </Button>
           <Button 
             onClick={handleScanNetwork} 
@@ -1201,7 +1204,7 @@ const Connections: React.FC = () => {
             disabled={!selectedInterface || isScanning}
             startIcon={isScanning ? <CircularProgress size={16} /> : <SearchIcon />}
           >
-            {isScanning ? 'Scanning...' : (scanResults.length > 0 ? 'Rescan' : 'Start Scan')}
+            {isScanning ? t('connections.scanning') : (scanResults.length > 0 ? t('connections.rescan') : t('connections.startScan'))}
           </Button>
         </DialogActions>
       </Dialog>

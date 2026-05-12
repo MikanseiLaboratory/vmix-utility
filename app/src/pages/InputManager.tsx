@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
@@ -85,6 +86,7 @@ const OptimizedInputRow = memo(({
   onTitleChange,
   onCopyKey
 }: InputRowProps) => {
+  const { t } = useTranslation();
   const { uiDensity } = useUISettings();
   const spacing = getDensitySpacing(uiDensity);
   return (
@@ -165,7 +167,9 @@ const OptimizedInputRow = memo(({
                      input.state === 'Paused' ? 'warning.main' : 'text.secondary',
             }}
           >
-            {input.state}
+            {input.state === 'Running' ? t('inputManager.stateRunning') :
+             input.state === 'Paused' ? t('inputManager.statePaused') :
+             input.state}
           </Typography>
         </Box>
       </TableCell>
@@ -202,6 +206,7 @@ const InputRow = OptimizedInputRow;
 
 
 const InputManager = () => {
+  const { t } = useTranslation();
   const { connections, inputs: globalInputs, sendVMixFunction, getVMixInputs } = useVMixStatus();
   const { uiDensity } = useUISettings();
   const spacing = getDensitySpacing(uiDensity);
@@ -262,7 +267,7 @@ const InputManager = () => {
         // Refresh inputs to get latest XML data
         await getVMixInputs(selectedConnection);
 
-        setToast({ open: true, message: 'Input title updated successfully', severity: 'success' });
+        setToast({ open: true, message: t('inputManager.toastTitleUpdated'), severity: 'success' });
         
         // Remove from editing data
         setEditingData(currentEditingData => {
@@ -271,7 +276,7 @@ const InputManager = () => {
         });
       } catch (error) {
         console.error('Failed to update input title:', error);
-        setToast({ open: true, message: 'Failed to update input title', severity: 'error' });
+        setToast({ open: true, message: t('inputManager.toastTitleFailed'), severity: 'error' });
       } finally {
         setOperationLoading(prev => {
           const { [key]: _, ...rest } = prev;
@@ -279,7 +284,7 @@ const InputManager = () => {
         });
       }
     }
-  }, [editingData, inputs, selectedConnection, sendVMixFunction, getVMixInputs]);
+  }, [editingData, inputs, selectedConnection, sendVMixFunction, getVMixInputs, t]);
 
   const handleTitleChange = useCallback((key: string, value: string) => {
     setEditingData(prev => ({ ...prev, [key]: value }));
@@ -312,11 +317,11 @@ const InputManager = () => {
         // Refresh inputs to get latest XML data
         await getVMixInputs(selectedConnection);
 
-        setToast({ open: true, message: 'Input deleted successfully', severity: 'success' });
+        setToast({ open: true, message: t('inputManager.toastDeleted'), severity: 'success' });
       } catch (error) {
         console.error('Failed to delete input:', error);
-        setError(`Failed to delete input: ${error}`);
-        setToast({ open: true, message: 'Failed to delete input', severity: 'error' });
+        setError(t('inputManager.deleteFailedDetail', { error: String(error) }));
+        setToast({ open: true, message: t('inputManager.toastDeleteFailed'), severity: 'error' });
       } finally {
         setOperationLoading(prev => {
           const { [`delete_${inputToDelete.key}`]: _, ...rest } = prev;
@@ -335,8 +340,8 @@ const InputManager = () => {
 
   const handleCopyKey = useCallback((key: string) => {
     navigator.clipboard.writeText(key);
-    setToast({ open: true, message: 'Key copied to clipboard!', severity: 'success' });
-  }, []);
+    setToast({ open: true, message: t('inputManager.toastKeyCopied'), severity: 'success' });
+  }, [t]);
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -412,7 +417,6 @@ const InputManager = () => {
         <ConnectionSelector
           selectedConnection={selectedConnection}
           onConnectionChange={setSelectedConnection}
-          label="vMix Connection"
           sx={{ mb: spacing.spacing }}
         />
 
@@ -424,7 +428,7 @@ const InputManager = () => {
 
         {connections.length === 0 && (
           <Alert severity="info" sx={{ mb: spacing.spacing }}>
-            No vMix connections available. Please connect to a vMix instance first.
+            {t('inputManager.noConnectionsAlert')}
           </Alert>
         )}
 
@@ -433,10 +437,10 @@ const InputManager = () => {
       {connections.length === 0 ? (
         <Paper sx={{ p: spacing.cardPadding * 2, textAlign: 'center' }}>
           <Typography variant="h6" color="textSecondary" gutterBottom>
-            No vMix Connections Available
+            {t('inputManager.noConnectionsTitle')}
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            Please connect to a vMix instance from the Connections page to manage inputs.
+            {t('inputManager.noConnectionsBody')}
           </Typography>
         </Paper>
       ) : (
@@ -450,7 +454,7 @@ const InputManager = () => {
                     direction={orderBy === 'number' ? order : 'asc'}
                     onClick={() => handleRequestSort('number')}
                   >
-                    #
+                    {t('inputManager.sortNumber')}
                   </TableSortLabel>
                 </TableCell>
                 <TableCell sx={{ minWidth: '160px' }}>
@@ -459,7 +463,7 @@ const InputManager = () => {
                     direction={orderBy === 'title' ? order : 'asc'}
                     onClick={() => handleRequestSort('title')}
                   >
-                    Title
+                    {t('inputManager.sortTitle')}
                   </TableSortLabel>
                 </TableCell>
                 <TableCell sx={{ width: '120px', minWidth: '120px' }}>
@@ -468,12 +472,12 @@ const InputManager = () => {
                     direction={orderBy === 'type' ? order : 'asc'}
                     onClick={() => handleRequestSort('type')}
                   >
-                    Type
+                    {t('inputManager.sortType')}
                   </TableSortLabel>
                 </TableCell>
-                <TableCell sx={{ width: '100px', minWidth: '100px' }}>State</TableCell>
-                <TableCell sx={{ width: '140px', minWidth: '140px' }}>Key</TableCell>
-                <TableCell sx={{ width: '80px', minWidth: '80px' }}>Actions</TableCell>
+                <TableCell sx={{ width: '100px', minWidth: '100px' }}>{t('inputManager.colState')}</TableCell>
+                <TableCell sx={{ width: '140px', minWidth: '140px' }}>{t('inputManager.colKey')}</TableCell>
+                <TableCell sx={{ width: '80px', minWidth: '80px' }}>{t('inputManager.colActions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -481,7 +485,7 @@ const InputManager = () => {
                 <TableRow>
                   <TableCell colSpan={6} align="center">
                     <Typography color="textSecondary">
-                      {selectedConnection ? 'No inputs found' : 'Select a vMix connection to view inputs'}
+                      {selectedConnection ? t('inputManager.emptyNoInputs') : t('inputManager.emptySelect')}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -535,7 +539,7 @@ const InputManager = () => {
             }}
             disabled={Object.keys(editingData).length === 0}
           >
-            Apply All Changes
+            {t('inputManager.applyAll')}
           </Button>
         </Box>
       )}
@@ -547,12 +551,11 @@ const InputManager = () => {
         aria-describedby="delete-dialog-description"
       >
         <DialogTitle id="delete-dialog-title">
-          Delete Input
+          {t('inputManager.deleteTitle')}
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
-            Are you sure you want to delete the input "{inputToDelete?.title}" (#{inputToDelete?.number})?
-            This action cannot be undone.
+            {t('inputManager.deleteConfirm', { title: inputToDelete?.title ?? '', number: inputToDelete?.number ?? '' })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -561,7 +564,7 @@ const InputManager = () => {
             color="primary"
             disabled={inputToDelete ? operationLoading[`delete_${inputToDelete.key}`] : false}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button 
             onClick={handleDeleteConfirm} 
@@ -569,7 +572,7 @@ const InputManager = () => {
             variant="contained"
             disabled={inputToDelete ? operationLoading[`delete_${inputToDelete.key}`] : false}
           >
-            {inputToDelete && operationLoading[`delete_${inputToDelete.key}`] ? 'Deleting...' : 'Delete'}
+            {inputToDelete && operationLoading[`delete_${inputToDelete.key}`] ? t('inputManager.deleting') : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>

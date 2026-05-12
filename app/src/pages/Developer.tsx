@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { SvgIconProps } from '@mui/material/SvgIcon';
+import { useTranslation, Trans } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 
 const TwitchIcon = (props: SvgIconProps) => (
@@ -34,6 +35,7 @@ const TwitchIcon = (props: SvgIconProps) => (
 );
 
 const Developer = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const repositoryUrl = 'https://github.com/MikanseiLaboratory/vmix-utility';
   const developerGitHub = 'https://github.com/MikanseiLaboratory';
@@ -44,12 +46,10 @@ const Developer = () => {
     openUrl(url);
   };
 
-
   return (
     <Box sx={{ p: 3 }}>
 
       <Grid2 container spacing={3}>
-        {/* Repository Information */}
         <Grid2 size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ height: '100%' }}>
             <CardContent>
@@ -59,18 +59,18 @@ const Developer = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h6" component="h2">
-                    Repository
+                    {t('developer.repository')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Open Source Project
+                    {t('developer.openSource')}
                   </Typography>
                 </Box>
               </Box>
-              
+
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                This project is open source and available on GitHub.
+                {t('developer.repoBody')}
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                 <Chip label="MIT License" variant="outlined" size="small" />
                 <Chip label="TypeScript" variant="outlined" size="small" />
@@ -78,20 +78,19 @@ const Developer = () => {
                 <Chip label="Tauri" variant="outlined" size="small" />
                 <Chip label="Rust" variant="outlined" size="small" />
               </Box>
-              
+
               <Button
                 variant="contained"
                 startIcon={<GitHub />}
                 onClick={() => openInBrowser(repositoryUrl)}
                 fullWidth
               >
-                View on GitHub
+                {t('developer.viewGithub')}
               </Button>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* Developer Information */}
         <Grid2 size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ height: '100%' }}>
             <CardContent>
@@ -101,16 +100,16 @@ const Developer = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h6" component="h2">
-                    未完成成果物研究所
+                    {t('developer.orgTitle')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    MikanseiLaboratory · Broadcast · Stream · Engineering
+                    {t('developer.orgSubtitle')}
                   </Typography>
                 </Box>
               </Box>
 
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                配信プロダクション向けツールとハードウェア機材の研究開発を行う技術者コミュニティです。完成の一歩手前にある成果物から、本質的な課題解決を目指しています。
+                {t('developer.orgBody')}
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
@@ -120,7 +119,7 @@ const Developer = () => {
                   onClick={() => openInBrowser(mikanseiLaboratoryUrl)}
                   fullWidth
                 >
-                  未完成成果物研究所（公式サイト）
+                  {t('developer.officialSite')}
                 </Button>
                 <Button
                   variant="outlined"
@@ -128,29 +127,28 @@ const Developer = () => {
                   onClick={() => openInBrowser(developerGitHub)}
                   fullWidth
                 >
-                  Visit GitHub Organization
+                  {t('developer.visitOrgGithub')}
                 </Button>
               </Box>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* Support & Donations */}
         <Grid2 size={12}>
           <Card elevation={3}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <FavoriteOutlined sx={{ mr: 1, color: 'error.main' }} />
                 <Typography variant="h6" component="h2">
-                  Support the Project
+                  {t('developer.supportTitle')}
                 </Typography>
               </Box>
 
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                If you find this project helpful, consider supporting its development via Twitch subscriptions.
+                {t('developer.supportBody')}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                <strong>💡 Did you know?</strong> If you have Amazon Prime, you can subscribe for free each month via Prime Gaming! Twitch subscriptions don't auto-renew, so you can choose to support the project every month.
+                <Trans i18nKey="developer.supportTip" components={{ strong: <strong /> }} />
               </Typography>
 
               <Box sx={{ mt: 1 }}>
@@ -166,33 +164,32 @@ const Developer = () => {
                   onClick={() => openInBrowser(twitchSupportUrl)}
                   fullWidth
                 >
-                  Subscribe on Twitch
+                  {t('developer.subscribeTwitch')}
                 </Button>
               </Box>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* License Information */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Description sx={{ mr: 1 }} />
               <Typography variant="h6" component="h2">
-                License
+                {t('developer.licenseTitle')}
               </Typography>
             </Box>
-            
+
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              This project is licensed under the MIT License.
+              {t('developer.licenseBody')}
             </Typography>
-            
+
             <Divider sx={{ my: 2 }} />
-            
-            <Box sx={{ 
-              bgcolor: resolvedTheme === 'dark' ? 'grey.800' : 'grey.50', 
-              p: 2, 
-              borderRadius: 1 
+
+            <Box sx={{
+              bgcolor: resolvedTheme === 'dark' ? 'grey.800' : 'grey.50',
+              p: 2,
+              borderRadius: 1
             }}>
               <Typography variant="body2" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                 {`MIT License
@@ -218,28 +215,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`}
               </Typography>
             </Box>
-            
+
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              For more information, see the{' '}
+              {t('developer.licenseMore')}{' '}
               <Link
                 component="button"
                 onClick={() => openInBrowser(`${repositoryUrl}/blob/master/LICENSE`)}
                 sx={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
-                LICENSE file
+                {t('developer.licenseFile')}
               </Link>{' '}
-              in the repository.
+              {t('developer.licenseInRepo')}
             </Typography>
           </Paper>
         </Grid2>
 
-        {/* Special Thanks */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Special Thanks
+              {t('developer.specialThanks')}
             </Typography>
-            
+
             <List>
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
@@ -254,10 +250,10 @@ SOFTWARE.`}
                       onClick={() => openInBrowser('https://github.com/FlowingSPDG')}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Shugo "FlowingSPDG" Kawamura
+                      Shugo &quot;FlowingSPDG&quot; Kawamura
                     </Link>
                   }
-                  secondary="Original Creator & Developer - Created and developed vmix-utility"
+                  secondary={t('developer.thanksFlowingSecondary')}
                 />
               </ListItem>
               <ListItem sx={{ pl: 0 }}>
@@ -276,20 +272,19 @@ SOFTWARE.`}
                       GuleruuN
                     </Link>
                   }
-                  secondary="Logo Designer - Created the beautiful vmix-utility logo"
+                  secondary={t('developer.thanksGulerSecondary')}
                 />
               </ListItem>
             </List>
           </Paper>
         </Grid2>
 
-        {/* Additional Links */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Useful Links
+              {t('developer.usefulLinks')}
             </Typography>
-            
+
             <List>
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
@@ -302,13 +297,13 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}/issues`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Report Issues
+                      {t('developer.reportIssues')}
                     </Link>
                   }
-                  secondary="Found a bug or have a feature request?"
+                  secondary={t('developer.reportIssuesSecondary')}
                 />
               </ListItem>
-              
+
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
                   <Description />
@@ -320,13 +315,13 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Documentation
+                      {t('developer.documentation')}
                     </Link>
                   }
-                  secondary="Learn more about using vmix-utility"
+                  secondary={t('developer.documentationSecondary')}
                 />
               </ListItem>
-              
+
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
                   <Code />
@@ -338,10 +333,10 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}/pulls`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Contribute
+                      {t('developer.contribute')}
                     </Link>
                   }
-                  secondary="Help improve the project with pull requests"
+                  secondary={t('developer.contributeSecondary')}
                 />
               </ListItem>
             </List>

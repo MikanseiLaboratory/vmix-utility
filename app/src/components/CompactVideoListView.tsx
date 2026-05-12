@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -51,6 +52,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   uiDensity = 'standard' as UIDensity,
   initialExpandedLists = new Set(),
 }) => {
+  const { t } = useTranslation();
   const [expandedLists, setExpandedLists] = useState<Set<string>>(initialExpandedLists);
   const [showFullPaths, setShowFullPaths] = useState(false);
   
@@ -69,7 +71,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   };
 
   const getFileName = (filePath: string) => {
-    return filePath.split(/[\\\/]/).pop() || 'Unknown File';
+    return filePath.split(/[\\\/]/).pop() || t('common.unknownFile');
   };
 
   // Generate stable key based on data content
@@ -99,7 +101,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                 checkedIcon={<VisibilityIcon fontSize="small" />}
               />
             }
-            label="Show full paths"
+            label={t('compactVideoList.showFullPaths')}
             labelPlacement="start"
             sx={{ ml: 0, mr: 0 }}
           />
@@ -109,7 +111,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
       {/* Video Lists */}
       {videoLists.length === 0 ? (
         <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-          No VideoList inputs found.
+          {t('compactVideoList.noInputs')}
         </Typography>
       ) : (
         <Box>
@@ -149,7 +151,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                     </Box>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'grey.300' }}>
-                        {videoList.items.length} items
+                        {t('compactVideoList.itemsCount', { count: videoList.items.length })}
                       </Typography>
                       {onPopout && (
                         <IconButton
@@ -185,7 +187,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                   >
                     {videoList.items.length === 0 ? (
                       <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                        No items in this video list
+                        {t('compactVideoList.noItems')}
                       </Typography>
                     ) : (
                       videoList.items.map((item, index) => {

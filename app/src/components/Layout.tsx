@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { 
-  Box, 
-  Drawer, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Divider, 
-  List, 
-  ListItem, 
-  ListItemButton, 
-  ListItemIcon, 
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  Typography,
+  Divider,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
   ListItemText,
   IconButton,
   CssBaseline,
@@ -42,10 +43,11 @@ interface NavItem {
 }
 
 const Layout = () => {
+  const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -57,49 +59,49 @@ const Layout = () => {
     }
   };
 
-  const navItems: NavItem[] = [
-    { 
-      text: 'Connections', 
-      icon: <LinkIcon />, 
-      component: <Connections /> 
+  const navItems: NavItem[] = useMemo(() => [
+    {
+      text: t('layout.nav.connections'),
+      icon: <LinkIcon />,
+      component: <Connections />
     },
-    { 
-      text: 'Shortcut Generator', 
-      icon: <ShortcutIcon />, 
-      component: <ShortcutGenerator /> 
+    {
+      text: t('layout.nav.shortcutGenerator'),
+      icon: <ShortcutIcon />,
+      component: <ShortcutGenerator />
     },
-    { 
-      text: 'Blank Generator', 
-      icon: <CreateIcon />, 
-      component: <BlankGenerator /> 
+    {
+      text: t('layout.nav.blankGenerator'),
+      icon: <CreateIcon />,
+      component: <BlankGenerator />
     },
-    { 
-      text: 'Input Manager', 
-      icon: <ViewListIcon />, 
-      component: <InputManager /> 
+    {
+      text: t('layout.nav.inputManager'),
+      icon: <ViewListIcon />,
+      component: <InputManager />
     },
-    { 
-      text: 'List Manager', 
-      icon: <PlaylistPlayIcon />, 
-      component: <ListManager /> 
+    {
+      text: t('layout.nav.listManager'),
+      icon: <PlaylistPlayIcon />,
+      component: <ListManager />
     },
-    { 
-      text: 'Settings', 
-      icon: <SettingsIcon />, 
-      component: <Settings /> 
+    {
+      text: t('layout.nav.settings'),
+      icon: <SettingsIcon />,
+      component: <Settings />
     },
-    { 
-      text: 'Developer', 
-      icon: <CodeIcon />, 
-      component: <Developer /> 
+    {
+      text: t('layout.nav.developer'),
+      icon: <CodeIcon />,
+      component: <Developer />
     },
-  ];
+  ], [t]);
 
   const drawer = (
     <div>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          vMix Utility
+          {t('layout.appTitle')}
         </Typography>
       </Toolbar>
       <Divider />
@@ -139,7 +141,7 @@ const Layout = () => {
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="toggle drawer"
+            aria-label={t('layout.toggleDrawer')}
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ mr: 2 }}
@@ -172,8 +174,8 @@ const Layout = () => {
           open={desktopOpen}
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
               width: drawerWidth,
             },
           }}
@@ -183,9 +185,9 @@ const Layout = () => {
       </Box>
       <Box
         component="main"
-        sx={{ 
-          flexGrow: 1, 
-          p: 3, 
+        sx={{
+          flexGrow: 1,
+          p: 3,
           width: { sm: `calc(100% - ${desktopOpen ? drawerWidth : 0}px)` },
           marginTop: '64px',
           height: 'calc(100vh - 64px)',

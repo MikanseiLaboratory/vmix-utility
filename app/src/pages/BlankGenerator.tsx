@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import ConnectionSelector from '../components/ConnectionSelector';
@@ -21,19 +22,18 @@ import {
 } from '@mui/material';
 
 const BlankGenerator = () => {
+  const { t } = useTranslation();
   const { getVMixInputs, sendVMixFunction } = useVMixStatus();
   const [transparent, setTransparent] = useState(false);
   const [count, setCount] = useState(1);
   const [countError, setCountError] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generating, setGenerating] = useState(false);
-  
-  // Toast state
+
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
 
-  // Use optimized connection selection hook
   const { selectedConnection, setSelectedConnection, connectedConnections } = useConnectionSelection();
 
   const handleTransparentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,12 +42,12 @@ const BlankGenerator = () => {
 
   const handleCountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = event.target.value;
-    
+
     if (inputValue === '') {
       setCountError(true);
       return;
     }
-    
+
     const value = parseInt(inputValue, 10);
     if (!isNaN(value) && value >= 1 && value <= 50) {
       setCount(value);
@@ -73,26 +73,23 @@ const BlankGenerator = () => {
     setGenerating(true);
 
     try {
-      // Generate blanks using vMix API
       for (let i = 0; i < count; i++) {
-        const params = transparent 
+        const params = transparent
           ? { Value: 'Colour|Transparent'}
           : { Value: 'Colour|Black'};
-        
+
         await sendVMixFunction(selectedConnection, 'AddInput', params);
       }
 
-      // Refresh inputs to get latest XML data
       await getVMixInputs(selectedConnection);
 
-      console.log(`Generated ${count} blank${count !== 1 ? 's' : ''} with transparent=${transparent} on ${selectedConnection}`);
-      
-      setToastMessage(`Successfully generated ${count} blank${count !== 1 ? 's' : ''} with ${transparent ? 'transparent' : 'black'} background!`);
+      const bg = transparent ? t('common.transparent') : t('common.black');
+      setToastMessage(t('blank.success', { count, plural: count !== 1 ? 's' : '', bg }));
       setToastSeverity('success');
       setToastOpen(true);
     } catch (error) {
       console.error('Failed to generate blanks:', error);
-      setToastMessage(`Failed to generate blanks: ${error}`);
+      setToastMessage(t('blank.fail', { error: String(error) }));
       setToastSeverity('error');
       setToastOpen(true);
     } finally {
@@ -108,19 +105,20 @@ const BlankGenerator = () => {
     setToastOpen(false);
   };
 
+  const bgWord = transparent ? t('common.transparent') : t('common.black');
+
   return (
     <Box sx={{ p: 3 }}>
-      
+
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Generate Blank Inputs
+          {t('blank.title')}
         </Typography>
 
         <Box sx={{ mb: 3 }}>
           <ConnectionSelector
             selectedConnection={selectedConnection}
             onConnectionChange={setSelectedConnection}
-            label="vMix Connection"
           />
         </Box>
 
@@ -133,14 +131,14 @@ const BlankGenerator = () => {
                 color="primary"
               />
             }
-            label="Transparent Background"
+            label={t('blank.transparent')}
           />
         </Box>
-        
+
         <Box sx={{ mb: 3 }}>
           <TextField
             id="blank-count-input"
-            label="Number of Blanks to Generate"
+            label={t('blank.countLabel')}
             type="number"
             value={count}
             onChange={handleCountChange}
@@ -150,12 +148,12 @@ const BlankGenerator = () => {
               step: 1
             }}
             error={countError}
-            helperText={countError ? "Please enter a number between 1 and 50" : "Enter a number between 1 and 50"}
+            helperText={countError ? t('blank.countError') : t('blank.countHelper')}
             fullWidth
             variant="outlined"
           />
         </Box>
-        
+
         <Button
           variant="contained"
           color="primary"
@@ -164,11 +162,10 @@ const BlankGenerator = () => {
           disabled={selectedConnection === '' || generating || countError || count < 1 || count > 50}
           startIcon={generating ? <CircularProgress size={20} /> : null}
         >
-          {generating ? 'Generating...' : 'Generate Blanks'}
+          {generating ? t('blank.generating') : t('blank.generate')}
         </Button>
       </Paper>
 
-      {/* Confirmation Dialog */}
       <Dialog
         open={showConfirmDialog}
         onClose={handleCancelGenerate}
@@ -176,39 +173,40 @@ const BlankGenerator = () => {
         aria-describedby="confirm-dialog-description"
       >
         <DialogTitle id="confirm-dialog-title">
-          Confirm Blank Generation
+          {t('blank.confirmTitle')}
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="confirm-dialog-description">
-            Are you sure you want to generate {count} {transparent ? 'transparent' : 'black'} blank input{count !== 1 ? 's' : ''} in vMix?
+            {t('blank.confirmBody', { count, bg: bgWord, plural: count !== 1 ? 's' : '' })}
             <br />
             <br />
-            <strong>Connection:</strong> {connectedConnections.find(c => c.host === selectedConnection)?.label}
+            <strong>{t('blank.typeLine')}</strong>{' '}
+            {transparent ? t('blank.colourTransparent') : t('blank.colourBlack')}
             <br />
-            <strong>Type:</strong> {transparent ? 'Transparent' : 'Black'} Colour
+            <strong>{t('common.connection')}:</strong>{' '}
+            {connectedConnections.find(c => c.host === selectedConnection)?.label}
             <br />
-            <strong>Count:</strong> {count}
+            <strong>{t('common.count')}:</strong> {count}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelGenerate}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleConfirmGenerate} variant="contained" autoFocus>
-            Generate
+            {t('blank.generateBtn')}
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Toast Notification */}
+
       <Snackbar
         open={toastOpen}
         autoHideDuration={6000}
         onClose={handleToastClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleToastClose} 
+        <Alert
+          onClose={handleToastClose}
           severity={toastSeverity}
           sx={{ width: '100%' }}
         >

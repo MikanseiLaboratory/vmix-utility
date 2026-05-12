@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { SelectChangeEvent } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { useUISettings } from '../hooks/useUISettings.tsx';
 import { settingsService } from '../services/settingsService';
 import { invoke } from '@tauri-apps/api/core';
+import { applySavedLocale } from '../i18n/config';
+import type { AppLocale } from '../i18n/locale';
+import { normalizeLocale } from '../i18n/locale';
 import {
   Box,
   Typography,
@@ -26,6 +30,7 @@ import {
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 
 const Settings = () => {
+  const { t } = useTranslation();
   const { themeMode, setThemeMode, resolvedTheme } = useTheme();
   const { refreshSettings } = useUISettings();
   const [settings, setSettings] = useState({
@@ -35,8 +40,8 @@ const Settings = () => {
     logLevel: 'info',
     saveLogsToFile: false,
     logFilePath: '',
-    // New UI settings
     uiDensity: 'comfortable' as 'compact' | 'comfortable' | 'spacious',
+    locale: 'ja' as AppLocale,
   });
 
   const [appInfo, setAppInfo] = useState<{
@@ -83,10 +88,10 @@ const Settings = () => {
   const handleOpenLogsDirectory = async () => {
     try {
       await settingsService.openLogsDirectory();
-      showToast('Logs directory opened', 'info');
+      showToast(t('settings.logsOpened'), 'info');
     } catch (error) {
       console.error('Failed to open logs directory:', error);
-      showToast(`Failed to open logs directory: ${error}`, 'error');
+      showToast(t('settings.logsOpenFailed', { error: String(error) }), 'error');
     }
   };
 
@@ -101,13 +106,19 @@ const Settings = () => {
       }>('check_for_updates');
       setUpdateInfo(result);
       if (result.available) {
-        showToast(`Update available: ${result.current_version} → ${result.latest_version}`, 'info');
+        showToast(
+          t('settings.updateAvailableToast', {
+            current: result.current_version,
+            latest: result.latest_version ?? '',
+          }),
+          'info'
+        );
       } else {
-        showToast('You are using the latest version', 'success');
+        showToast(t('settings.latestToast'), 'success');
       }
     } catch (error) {
       console.error('Failed to check for updates:', error);
-      showToast(`Failed to check for updates: ${error}`, 'error');
+      showToast(t('settings.checkUpdateFailed', { error: String(error) }), 'error');
     } finally {
       setCheckingUpdate(false);
     }
@@ -116,10 +127,10 @@ const Settings = () => {
   const handleInstallUpdate = async () => {
     try {
       await invoke('install_update');
-      showToast('Update installation started', 'info');
+      showToast(t('settings.installStarted'), 'info');
     } catch (error) {
       console.error('Failed to install update:', error);
-      showToast(`Failed to install update: ${error}`, 'error');
+      showToast(t('settings.installFailed', { error: String(error) }), 'error');
     }
   };
 
@@ -133,37 +144,34 @@ const Settings = () => {
 
   const handleApply = async () => {
     try {
-      // Apply theme change first
       if (settings.theme !== themeMode) {
         await setThemeMode(settings.theme as ThemeMode);
       }
-      
-      // Save app settings to backend
+
       await settingsService.saveAppSettings({
         defaultVMixIP: settings.defaultVMixIP,
         defaultVMixPort: settings.defaultVMixPort,
         theme: settings.theme,
         uiDensity: settings.uiDensity,
+        locale: settings.locale,
       });
 
-      // Save logging configuration to backend
       await settingsService.setLoggingConfig(settings.logLevel, settings.saveLogsToFile);
-      
-      // Refresh UI settings in context
+
       await refreshSettings();
-      
-      showToast('Settings saved successfully!', 'success');
+
+      applySavedLocale(settings.locale);
+
+      showToast(t('settings.saved'), 'success');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      showToast(`Failed to save settings: ${error}`, 'error');
+      showToast(t('settings.saveFailed', { error: String(error) }), 'error');
     }
   };
 
-  // Load configuration on component mount
   useEffect(() => {
     const loadConfigurations = async () => {
       try {
-        // Load app settings
         const appSettings = await settingsService.getAppSettings();
         if (appSettings) {
           setSettings(prev => ({
@@ -171,11 +179,11 @@ const Settings = () => {
             defaultVMixIP: appSettings.default_vmix_ip ?? '127.0.0.1',
             defaultVMixPort: appSettings.default_vmix_port ?? 8088,
             theme: appSettings.theme as ThemeMode ?? 'Auto',
-            uiDensity: appSettings.ui_density as any ?? 'comfortable',
+            uiDensity: appSettings.ui_density as 'compact' | 'comfortable' | 'spacious' ?? 'comfortable',
+            locale: normalizeLocale(appSettings.locale),
           }));
         }
 
-        // Load logging configuration
         const loggingConfig = await settingsService.getLoggingConfig();
         if (loggingConfig) {
           setSettings(prev => ({
@@ -185,14 +193,18 @@ const Settings = () => {
           }));
         }
 
-        // Load application information
-        const appInfo = await settingsService.getAppInfo();
-        if (appInfo) {
-          setAppInfo(appInfo as any);
+        const info = await settingsService.getAppInfo();
+        if (info) {
+          setAppInfo(info as {
+            version: string;
+            git_commit_hash: string;
+            git_branch: string;
+            build_timestamp: string;
+          });
         }
       } catch (error) {
         console.error('Failed to load configurations:', error);
-        showToast('Failed to load settings', 'error');
+        showToast(t('settings.loadFailed'), 'error');
       }
     };
 
@@ -203,31 +215,49 @@ const Settings = () => {
     <Box sx={{ p: 3 }}>
       <Paper sx={{ p: 3 }}>
         <Grid2 container spacing={3}>
-          
+
           <Grid2 size={{ xs: 12, md: 6 }}>
             <Typography variant="h6" gutterBottom>
-              Application Settings
+              {t('settings.applicationSettings')}
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Box sx={{ mb: 2 }}>
               <FormControl fullWidth margin="normal">
-                <InputLabel id="theme-select-label">Theme</InputLabel>
+                <InputLabel id="locale-select-label">{t('settings.language')}</InputLabel>
+                <Select
+                  labelId="locale-select-label"
+                  name="locale"
+                  value={settings.locale}
+                  onChange={handleSelectChange}
+                  label={t('settings.language')}
+                >
+                  <MenuItem value="ja">{t('settings.languageJa')}</MenuItem>
+                  <MenuItem value="en">{t('settings.languageEn')}</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="theme-select-label">{t('settings.theme')}</InputLabel>
                 <Select
                   labelId="theme-select-label"
                   name="theme"
                   value={settings.theme}
                   onChange={handleSelectChange}
-                  label="Theme"
+                  label={t('settings.theme')}
                 >
-                  <MenuItem value="Light">Light</MenuItem>
-                  <MenuItem value="Dark">Dark</MenuItem>
-                  <MenuItem value="Auto">Auto (System Default)</MenuItem>
+                  <MenuItem value="Light">{t('settings.themeLight')}</MenuItem>
+                  <MenuItem value="Dark">{t('settings.themeDark')}</MenuItem>
+                  <MenuItem value="Auto">{t('settings.themeAuto')}</MenuItem>
                 </Select>
               </FormControl>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Current theme: {resolvedTheme}
-                {themeMode === 'Auto' && ' (following system preference)'}
+                {t('settings.currentTheme', {
+                  theme: resolvedTheme,
+                  autoNote: themeMode === 'Auto' ? t('settings.followingSystem') : '',
+                })}
               </Typography>
             </Box>
 
@@ -235,25 +265,25 @@ const Settings = () => {
 
           <Grid2 size={{ xs: 12, md: 6 }}>
             <Typography variant="h6" gutterBottom>
-              Logging Settings
+              {t('settings.loggingSettings')}
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Box sx={{ mb: 2 }}>
               <FormControl fullWidth margin="normal">
-                <InputLabel id="log-level-select-label">Log Level</InputLabel>
+                <InputLabel id="log-level-select-label">{t('settings.logLevel')}</InputLabel>
                 <Select
                   labelId="log-level-select-label"
                   name="logLevel"
                   value={settings.logLevel}
                   onChange={handleSelectChange}
-                  label="Log Level"
+                  label={t('settings.logLevel')}
                 >
-                  <MenuItem value="error">Error</MenuItem>
-                  <MenuItem value="warn">Warning</MenuItem>
-                  <MenuItem value="info">Info</MenuItem>
-                  <MenuItem value="debug">Debug</MenuItem>
-                  <MenuItem value="trace">Trace</MenuItem>
+                  <MenuItem value="error">{t('settings.logLevelError')}</MenuItem>
+                  <MenuItem value="warn">{t('settings.logLevelWarn')}</MenuItem>
+                  <MenuItem value="info">{t('settings.logLevelInfo')}</MenuItem>
+                  <MenuItem value="debug">{t('settings.logLevelDebug')}</MenuItem>
+                  <MenuItem value="trace">{t('settings.logLevelTrace')}</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -268,20 +298,20 @@ const Settings = () => {
                     color="primary"
                   />
                 }
-                label="Save logs to file"
+                label={t('settings.saveLogsToFile')}
               />
             </FormGroup>
 
             {settings.saveLogsToFile && (
               <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2" color="textSecondary">
-                  Open logs directory:
+                  {t('settings.openLogsDirectory')}
                 </Typography>
-                <IconButton 
+                <IconButton
                   onClick={handleOpenLogsDirectory}
                   size="small"
                   color="primary"
-                  title="Open logs directory in file explorer"
+                  title={t('settings.openLogsTitle')}
                 >
                   <FolderOpenIcon />
                 </IconButton>
@@ -291,27 +321,27 @@ const Settings = () => {
 
           <Grid2 size={12}>
             <Typography variant="h6" gutterBottom>
-              UI Settings
+              {t('settings.uiSettings')}
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Box sx={{ mb: 2 }}>
               <FormControl fullWidth margin="normal">
-                <InputLabel id="ui-density-select-label">UI Density</InputLabel>
+                <InputLabel id="ui-density-select-label">{t('settings.uiDensity')}</InputLabel>
                 <Select
                   labelId="ui-density-select-label"
                   name="uiDensity"
                   value={settings.uiDensity}
                   onChange={handleSelectChange}
-                  label="UI Density"
+                  label={t('settings.uiDensity')}
                 >
-                  <MenuItem value="compact">Compact</MenuItem>
-                  <MenuItem value="comfortable">Comfortable</MenuItem>
-                  <MenuItem value="spacious">Spacious</MenuItem>
+                  <MenuItem value="compact">{t('settings.densityCompact')}</MenuItem>
+                  <MenuItem value="comfortable">{t('settings.densityComfortable')}</MenuItem>
+                  <MenuItem value="spacious">{t('settings.densitySpacious')}</MenuItem>
                 </Select>
               </FormControl>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Controls the spacing and size of UI elements in list views
+                {t('settings.uiDensityHelper')}
               </Typography>
             </Box>
 
@@ -319,30 +349,29 @@ const Settings = () => {
 
           <Grid2 size={12}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 color="primary"
                 size="large"
                 onClick={handleApply}
               >
-                Apply Settings
+                {t('settings.apply')}
               </Button>
             </Box>
           </Grid2>
         </Grid2>
       </Paper>
 
-      {/* Application Information Section */}
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h5" component="h2" gutterBottom>
-          Application Information
+          {t('settings.appInfo')}
         </Typography>
-        
+
         {appInfo ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="textSecondary">
-                Version:
+                {t('settings.version')}
               </Typography>
               <Typography variant="body1" fontFamily="monospace" fontWeight="medium">
                 {appInfo.version}
@@ -351,7 +380,7 @@ const Settings = () => {
             <Divider />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="textSecondary">
-                Git Commit:
+                {t('settings.gitCommit')}
               </Typography>
               <Typography variant="body1" fontFamily="monospace" fontWeight="medium">
                 {appInfo.git_commit_hash}
@@ -360,7 +389,7 @@ const Settings = () => {
             <Divider />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="textSecondary">
-                Git Branch:
+                {t('settings.gitBranch')}
               </Typography>
               <Typography variant="body1" fontFamily="monospace" fontWeight="medium">
                 {appInfo.git_branch}
@@ -369,39 +398,37 @@ const Settings = () => {
             <Divider />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="textSecondary">
-                Build Time:
+                {t('settings.buildTime')}
               </Typography>
               <Typography variant="body1" fontFamily="monospace" fontWeight="medium">
                 {appInfo.build_timestamp}
               </Typography>
             </Box>
             <Divider />
-            
-            {/* Update Status */}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="textSecondary">
-                Update Status:
+                {t('settings.updateStatus')}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {updateInfo ? (
                   updateInfo.available ? (
                     <Typography variant="body2" color="warning.main" fontWeight="medium">
-                      Update Available: {updateInfo.latest_version}
+                      {t('settings.updateAvailable', { version: updateInfo.latest_version ?? '' })}
                     </Typography>
                   ) : (
                     <Typography variant="body2" color="success.main" fontWeight="medium">
-                      ✓ Latest Version
+                      {t('settings.latestVersion')}
                     </Typography>
                   )
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    Unknown
+                    {t('settings.unknown')}
                   </Typography>
                 )}
               </Box>
             </Box>
-            
-            {/* Update Actions */}
+
             <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
               <Button
                 variant="outlined"
@@ -410,7 +437,7 @@ const Settings = () => {
                 disabled={checkingUpdate}
                 startIcon={checkingUpdate ? <CircularProgress size={16} /> : null}
               >
-                {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+                {checkingUpdate ? t('settings.checkingUpdates') : t('settings.checkForUpdates')}
               </Button>
               {updateInfo?.available && (
                 <Button
@@ -419,27 +446,26 @@ const Settings = () => {
                   size="small"
                   onClick={handleInstallUpdate}
                 >
-                  Install Update
+                  {t('settings.installUpdate')}
                 </Button>
               )}
             </Box>
           </Box>
         ) : (
           <Typography variant="body1" color="textSecondary">
-            Loading application information...
+            {t('settings.loadingAppInfo')}
           </Typography>
         )}
       </Paper>
 
-      {/* Toast Notification */}
-      <Snackbar 
-        open={toast.open} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
         onClose={handleCloseToast}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          severity={toast.severity} 
+        <Alert
+          severity={toast.severity}
           sx={{ width: '100%' }}
           variant="filled"
           onClose={handleCloseToast}
