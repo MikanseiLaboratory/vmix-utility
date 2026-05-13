@@ -54,7 +54,6 @@
     "showFullPaths": "Show full paths",
     "host": "Host",
     "port": "Port",
-    "type": "Type",
     "status": "Status",
     "version": "Version",
     "edition": "Edition",
@@ -113,8 +112,7 @@
     "failInterfaces": "Failed to load network interfaces: {{error}}",
     "failScan": "Network scan failed: {{error}}",
     "failLabel": "Failed to update label: {{error}}",
-    "failLoadSettings": "Failed to load settings",
-    "http": "HTTP"
+    "failLoadSettings": "Failed to load settings"
   },
   "settings": {
     "applicationSettings": "Application Settings",

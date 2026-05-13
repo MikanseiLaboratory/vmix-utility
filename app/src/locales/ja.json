@@ -54,7 +54,6 @@
     "showFullPaths": "フルパスを表示",
     "host": "Host",
     "port": "Port",
-    "type": "Type",
     "status": "Status",
     "version": "Version",
     "edition": "Edition",
@@ -113,8 +112,7 @@
     "failInterfaces": "ネットワーク一覧の取得に失敗: {{error}}",
     "failScan": "ネットワークスキャンに失敗: {{error}}",
     "failLabel": "Labelの更新に失敗: {{error}}",
-    "failLoadSettings": "設定の読み込みに失敗しました",
-    "http": "HTTP"
+    "failLoadSettings": "設定の読み込みに失敗しました"
   },
   "settings": {
     "applicationSettings": "アプリケーション設定",

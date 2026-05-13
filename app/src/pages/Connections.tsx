@@ -469,7 +469,7 @@ const Connections: React.FC = () => {
             : '0 2px 8px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Table size="small" sx={{ minWidth: 1200 }}>
+        <Table size="small" sx={{ minWidth: 1120 }}>
           <TableHead>
             <TableRow sx={{ 
               backgroundColor: (theme) => theme.palette.mode === 'dark' 
@@ -489,13 +489,6 @@ const Connections: React.FC = () => {
                 fontWeight: 600,
                 borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
               }}>{t('connections.port')}</TableCell>
-              <TableCell sx={{ 
-                fontSize: '0.75rem', 
-                py: 1.5, 
-                width: '50px',
-                fontWeight: 600,
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-              }}>{t('connections.type')}</TableCell>
               <TableCell sx={{ 
                 fontSize: '0.75rem', 
                 py: 1.5, 
@@ -557,7 +550,7 @@ const Connections: React.FC = () => {
           <TableBody>
             {(globalLoading && connections.length === 0) ? (
               <TableRow>
-                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <CircularProgress />
                     <Typography variant="body2" color="textSecondary">
@@ -568,7 +561,7 @@ const Connections: React.FC = () => {
               </TableRow>
             ) : connections.length === 0 && backgroundConnections.size === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">
                     {t('connections.empty')}
                   </Typography>
@@ -672,21 +665,6 @@ const Connections: React.FC = () => {
                       }}
                     >
                       {connection.port}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ 
-                    py: 1.5,
-                    borderBottom: 'none',
-                  }}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontSize: '0.75rem',
-                        color: 'text.primary',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {t('connections.http')}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ 
