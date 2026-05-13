@@ -125,6 +125,7 @@
   "settings": {
     "applicationSettings": "Application Settings",
     "language": "Language",
+    "languageSystem": "Match system language",
     "languageJa": "Japanese",
     "languageEn": "English",
     "theme": "Theme",

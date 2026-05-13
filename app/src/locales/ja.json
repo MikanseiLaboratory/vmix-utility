@@ -125,6 +125,7 @@
   "settings": {
     "applicationSettings": "アプリケーション設定",
     "language": "言語",
+    "languageSystem": "システムの言語に合わせる",
     "languageJa": "日本語",
     "languageEn": "English",
     "theme": "テーマ",

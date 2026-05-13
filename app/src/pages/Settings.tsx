@@ -6,8 +6,8 @@ import { useUISettings } from '../hooks/useUISettings.tsx';
 import { settingsService } from '../services/settingsService';
 import { invoke } from '@tauri-apps/api/core';
 import { applySavedLocale } from '../i18n/config';
-import type { AppLocale } from '../i18n/locale';
-import { normalizeLocale } from '../i18n/locale';
+import type { SettingsLocaleChoice } from '../i18n/locale';
+import { parseStoredLocaleForSettings } from '../i18n/locale';
 import {
   Box,
   Typography,
@@ -41,7 +41,7 @@ const Settings = () => {
     saveLogsToFile: false,
     logFilePath: '',
     uiDensity: 'comfortable' as 'compact' | 'comfortable' | 'spacious',
-    locale: 'ja' as AppLocale,
+    locale: 'system' as SettingsLocaleChoice,
   });
 
   const [appInfo, setAppInfo] = useState<{
@@ -153,14 +153,14 @@ const Settings = () => {
         defaultVMixPort: settings.defaultVMixPort,
         theme: settings.theme,
         uiDensity: settings.uiDensity,
-        locale: settings.locale,
+        locale: settings.locale === 'system' ? '' : settings.locale,
       });
 
       await settingsService.setLoggingConfig(settings.logLevel, settings.saveLogsToFile);
 
       await refreshSettings();
 
-      applySavedLocale(settings.locale);
+      applySavedLocale(settings.locale === 'system' ? '' : settings.locale);
 
       showToast(t('settings.saved'), 'success');
     } catch (error) {
@@ -180,7 +180,7 @@ const Settings = () => {
             defaultVMixPort: appSettings.default_vmix_port ?? 8088,
             theme: appSettings.theme as ThemeMode ?? 'Auto',
             uiDensity: appSettings.ui_density as 'compact' | 'comfortable' | 'spacious' ?? 'comfortable',
-            locale: normalizeLocale(appSettings.locale),
+            locale: parseStoredLocaleForSettings(appSettings.locale),
           }));
         }
 
@@ -232,6 +232,7 @@ const Settings = () => {
                   onChange={handleSelectChange}
                   label={t('settings.language')}
                 >
+                  <MenuItem value="system">{t('settings.languageSystem')}</MenuItem>
                   <MenuItem value="ja">{t('settings.languageJa')}</MenuItem>
                   <MenuItem value="en">{t('settings.languageEn')}</MenuItem>
                 </Select>

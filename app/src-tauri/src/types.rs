@@ -198,7 +198,7 @@ impl ToString for UIDensity {
 }
 
 fn default_locale() -> String {
-    "ja".to_string()
+    String::new()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
