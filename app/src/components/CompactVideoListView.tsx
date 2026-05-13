@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Collapse,
-  Switch,
-  FormControlLabel,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Switch from '@mui/material/Switch';
+import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -89,7 +87,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   return (
     <Box>
       {/* Show full paths toggle */}
-      {showPathsToggle && (
+      {showPathsToggle ? (
         <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
           <FormControlLabel
             control={
@@ -106,7 +104,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
             sx={{ ml: 0, mr: 0 }}
           />
         </Box>
-      )}
+      ) : null}
 
       {/* Video Lists */}
       {videoLists.length === 0 ? (
@@ -153,7 +151,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                       <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'grey.300' }}>
                         {t('compactVideoList.itemsCount', { count: videoList.items.length })}
                       </Typography>
-                      {onPopout && (
+                      {onPopout ? (
                         <IconButton
                           size="small"
                           onClick={(e) => {
@@ -164,7 +162,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                         >
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
-                      )}
+                      ) : null}
                       <IconButton size="small" sx={{ color: 'white', p: 0.25 }}>
                         {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                       </IconButton>

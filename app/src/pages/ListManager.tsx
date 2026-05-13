@@ -1,15 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import ConnectionSelector from '../components/ConnectionSelector';
 import CompactVideoListView from '../components/CompactVideoListView';
-import {
-  Box,
-  Card,
-  Typography,
-  Alert,
-  Skeleton,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
+import Skeleton from '@mui/material/Skeleton';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
 
@@ -53,13 +51,11 @@ const ListManager: React.FC = () => {
 
   const isLoading = connectedConnections.length === 0 || (selectedHost && !contextVideoLists[selectedHost]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (selectedHost && !contextVideoLists[selectedHost]) {
       console.log(`Auto-fetching VideoLists for host: ${selectedHost}`);
-      Promise.resolve().then(() => {
-        getVMixVideoLists(selectedHost).catch(error => {
-          console.error(`Failed to auto-fetch VideoLists for ${selectedHost}:`, error);
-        });
+      getVMixVideoLists(selectedHost).catch(error => {
+        console.error(`Failed to auto-fetch VideoLists for ${selectedHost}:`, error);
       });
     }
   }, [selectedHost, contextVideoLists, getVMixVideoLists]);
@@ -115,11 +111,11 @@ const ListManager: React.FC = () => {
         />
       </Card>
 
-      {_error && (
+      {_error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
           {_error}
         </Alert>
-      )}
+      ) : null}
 
       {isLoading ? (
         <Box sx={{ p: 2 }}>

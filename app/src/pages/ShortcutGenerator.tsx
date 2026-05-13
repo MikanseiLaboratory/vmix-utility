@@ -7,31 +7,29 @@ import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
 import { FixedSizeList as List } from 'react-window';
 import ConnectionSelector from '../components/ConnectionSelector';
-import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  TextField,
-  IconButton,
-  Divider,
-  ButtonGroup,
-  Snackbar,
-  Alert,
-  Autocomplete,
-  Chip,
-  Collapse,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import Divider from '@mui/material/Divider';
+import FormControl from '@mui/material/FormControl';
+import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import Snackbar from '@mui/material/Snackbar';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import CodeIcon from '@mui/icons-material/Code';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
@@ -322,7 +320,7 @@ const VirtualizedInputItem = memo(({ index, style, data }: {
           </Box>
         </Box>
       </Box>
-      {!isLastItem && <Divider />}
+      {!isLastItem ? <Divider /> : null}
     </Box>
   );
 });
@@ -694,7 +692,7 @@ const ShortcutGenerator = () => {
             sx={{ flex: 1, minWidth: 250 }}
           />
 
-          {vmixInputs.length > 0 && (
+          {vmixInputs.length > 0 ? (
             <FormControl sx={{ minWidth: 200 }}>
               <InputLabel id="input-type-filter-label">{t('shortcut.filterInputType')}</InputLabel>
               <Select
@@ -714,20 +712,20 @@ const ShortcutGenerator = () => {
                 ))}
               </Select>
             </FormControl>
-          )}
+          ) : null}
         </Box>
 
-        {connections.length === 0 && (
+        {connections.length === 0 ? (
           <Alert severity="info" sx={{ mb: spacing.spacing }}>
             {t('shortcut.noConnectionsAlert')}
           </Alert>
-        )}
+        ) : null}
 
-        {vmixInputs.length === 0 && selectedConnection && (
+        {vmixInputs.length === 0 && selectedConnection ? (
           <Typography variant="body2" color="text.secondary">
             {t('shortcut.loadingInputs')}
           </Typography>
-        )}
+        ) : null}
       </Paper>
 
       {connections.length === 0 ? (
@@ -791,11 +789,11 @@ const ShortcutGenerator = () => {
                       <Typography variant="caption" color="text.secondary">
                         {option.Description}
                       </Typography>
-                      {option.Parameters && (
+                      {option.Parameters ? (
                         <Typography variant="caption" color="text.secondary" display="block">
                           {t('shortcut.paramsLabel')} {option.Parameters.join(', ')}
                         </Typography>
-                      )}
+                      ) : null}
                     </Box>
                   </Box>
                 )}
@@ -846,13 +844,13 @@ const ShortcutGenerator = () => {
                 <Typography variant="subtitle2" color="text.secondary">
                   {t('shortcut.queryParams')}
                 </Typography>
-                {sharedQueryParams.length > 0 && (
+                {sharedQueryParams.length > 0 ? (
                   <Chip 
                     label={t('shortcut.paramChip', { count: sharedQueryParams.length })}
                     size="small"
                     variant="outlined"
                   />
-                )}
+                ) : null}
               </Box>
               
               {sharedQueryParams.length > 0 ? (
@@ -1151,7 +1149,7 @@ const ShortcutGenerator = () => {
 
           <Paper sx={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
             {/* Special Inputs Header */}
-            {specialInputs.length > 0 && (
+            {specialInputs.length > 0 ? (
               <Box sx={{ p: spacing.cardPadding * 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
                 <Typography variant="subtitle2" color="text.secondary">
                   {t('shortcut.specialInputsHeader', { count: specialInputs.length })}
@@ -1163,7 +1161,7 @@ const ShortcutGenerator = () => {
                   {specialInputsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 </IconButton>
               </Box>
-            )}
+            ) : null}
             
             <Box ref={listContainerRef} sx={{ flex: 1, minHeight: 0 }}>
               <List

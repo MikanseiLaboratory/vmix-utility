@@ -3,39 +3,37 @@ import { useTranslation } from 'react-i18next';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { settingsService } from '../services/settingsService';
 import { NetworkScannerService, type NetworkInterface, type VmixScanResult } from '../services/networkScannerService';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow,
-  Button,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  CircularProgress,
-  Alert,
-  IconButton,
-  MenuItem,
-  Select,
-  FormControl,
-  FormLabel,
-  FormControlLabel,
-  RadioGroup,
-  Radio,
-  Backdrop,
-  Card,
-  CardContent,
-  DialogContentText,
-  Snackbar,
-  Switch
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Backdrop from '@mui/material/Backdrop';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormLabel from '@mui/material/FormLabel';
+import IconButton from '@mui/material/IconButton';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import Select from '@mui/material/Select';
+import Snackbar from '@mui/material/Snackbar';
+import Switch from '@mui/material/Switch';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReconnectIcon from '@mui/icons-material/Refresh';
@@ -446,11 +444,11 @@ const Connections: React.FC = () => {
         </Box>
       </Box>
 
-      {error && (
+      {error ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
-      )}
+      ) : null}
 
       {/* Preset path display toggle */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1 }}>
@@ -565,7 +563,7 @@ const Connections: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {(globalLoading) && connections.length === 0 ? (
+            {(globalLoading && connections.length === 0) ? (
               <TableRow>
                 <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
@@ -739,9 +737,9 @@ const Connections: React.FC = () => {
                               connection.status
                             )}
                           </Typography>
-                          {connection.status === 'Reconnecting' && (
+                          {connection.status === 'Reconnecting' ? (
                             <CircularProgress size={12} thickness={4} />
-                          )}
+                          ) : null}
                         </>
                       )}
                     </Box>
@@ -927,7 +925,7 @@ const Connections: React.FC = () => {
                       </Box>
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                        {connection.status === 'Disconnected' && (
+                        {connection.status === 'Disconnected' ? (
                           <IconButton
                             color="primary"
                             onClick={() => handleReconnect(connection)}
@@ -944,7 +942,7 @@ const Connections: React.FC = () => {
                           >
                             <ReconnectIcon fontSize="small" />
                           </IconButton>
-                        )}
+                        ) : null}
                         <IconButton 
                           color="error" 
                           onClick={() => handleDelete(connection.id)}
@@ -1030,11 +1028,11 @@ const Connections: React.FC = () => {
               />
             </RadioGroup>
           </FormControl>
-          {error && (
+          {error ? (
             <Alert severity="error" sx={{ mt: 2 }}>
               {error}
             </Alert>
-          )}
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>
@@ -1145,13 +1143,13 @@ const Connections: React.FC = () => {
             </Select>
           </FormControl>
 
-          {scanError && (
+          {scanError ? (
             <Alert severity="error" sx={{ mb: 2 }}>
               {scanError}
             </Alert>
-          )}
+          ) : null}
 
-          {scanResults.length > 0 && (
+          {scanResults.length > 0 ? (
             <Box sx={{ mt: 2 }}>
               <Typography variant="h6" sx={{ mb: 1 }}>
                 {t('connections.scanResults', { count: scanResults.length })}
@@ -1175,7 +1173,7 @@ const Connections: React.FC = () => {
                         </TableCell>
                         <TableCell>{result.response_time}{t('common.ms')}</TableCell>
                         <TableCell>
-                          {result.is_vmix && (
+                          {result.is_vmix ? (
                             <Button
                               size="small"
                               variant="outlined"
@@ -1184,7 +1182,7 @@ const Connections: React.FC = () => {
                             >
                               {connections.some(conn => conn.host === result.ip_address) ? t('connections.connected') : t('connections.connect')}
                             </Button>
-                          )}
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1192,7 +1190,7 @@ const Connections: React.FC = () => {
                 </Table>
               </TableContainer>
             </Box>
-          )}
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleScanClose} disabled={isScanning}>
@@ -1210,7 +1208,7 @@ const Connections: React.FC = () => {
       </Dialog>
 
       {/* Connection Notifications */}
-      {connectionNotifications.length > 0 && (
+      {connectionNotifications.length > 0 ? (
         <Snackbar
           open={true}
           autoHideDuration={5000}
@@ -1224,7 +1222,7 @@ const Connections: React.FC = () => {
             {connectionNotifications[0].message}
           </Alert>
         </Snackbar>
-      )}
+      ) : null}
     </Box>
   );
 };

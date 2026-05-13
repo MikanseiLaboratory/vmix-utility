@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-import { useMediaQuery } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { applySavedLocale } from '../i18n/config';
 
 // Theme mode types matching Rust backend
@@ -153,12 +153,15 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     loadThemeSettings();
   }, [loadThemeSettings]);
 
-  const contextValue: ThemeContextType = {
-    themeMode,
-    resolvedTheme,
-    setThemeMode,
-    isLoading,
-  };
+  const contextValue = useMemo<ThemeContextType>(
+    () => ({
+      themeMode,
+      resolvedTheme,
+      setThemeMode,
+      isLoading,
+    }),
+    [themeMode, resolvedTheme, setThemeMode, isLoading]
+  );
 
   return React.createElement(ThemeContext.Provider, { value: contextValue }, children);
 };

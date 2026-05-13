@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Alert,
-  CircularProgress
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import CompactVideoListView from '../components/CompactVideoListView';
 import { diagnosticsService } from '../services/diagnosticsService';
 import { useVMixStatus } from '../hooks/useVMixStatus';

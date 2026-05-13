@@ -3,23 +3,21 @@ import { useTranslation } from 'react-i18next';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import ConnectionSelector from '../components/ConnectionSelector';
-import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  TextField,
-  Alert,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  CircularProgress,
-  Snackbar
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
 const BlankGenerator = () => {
   const { t } = useTranslation();

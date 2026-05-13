@@ -1,18 +1,21 @@
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { jaJP, enUS } from '@mui/material/locale';
-import { useMemo, useEffect, useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { lazy, Suspense, useMemo, useEffect, useState } from 'react';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useTranslation } from 'react-i18next';
-import Layout from './components/Layout';
-import ListManager from './pages/ListManager';
-import SingleVideoList from './pages/SingleVideoList';
 import DonationDialog from './components/DonationDialog';
 import { VMixStatusProvider } from './hooks/useVMixStatus';
 import { ThemeProvider as CustomThemeProvider, useTheme } from './hooks/useTheme';
 import { UISettingsProvider } from './hooks/useUISettings.tsx';
 import { invoke } from '@tauri-apps/api/core';
 import "./App.css";
+
+const Layout = lazy(() => import('./components/Layout'));
+const ListManager = lazy(() => import('./pages/ListManager'));
+const SingleVideoList = lazy(() => import('./pages/SingleVideoList'));
 
 function AppContent() {
   const { t, i18n } = useTranslation();
@@ -121,7 +124,15 @@ function AppContent() {
       <CssBaseline />
       <UISettingsProvider>
         <VMixStatusProvider>
-          {renderContent()}
+          <Suspense
+            fallback={(
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+                <CircularProgress />
+              </Box>
+            )}
+          >
+            {renderContent()}
+          </Suspense>
           <DonationDialog
             open={donationDialogOpen}
             onClose={handleDonationDialogClose}

@@ -1,22 +1,21 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState, type LazyExoticComponent, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  Typography,
-  Divider,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
-  CssBaseline,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import IconButton from '@mui/material/IconButton';
+import CssBaseline from '@mui/material/CssBaseline';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import MenuIcon from '@mui/icons-material/Menu';
 import LinkIcon from '@mui/icons-material/Link';
 import ShortcutIcon from '@mui/icons-material/Shortcut';
@@ -26,20 +25,20 @@ import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CodeIcon from '@mui/icons-material/Code';
 
-import Connections from '../pages/Connections';
-import ShortcutGenerator from '../pages/ShortcutGenerator';
-import BlankGenerator from '../pages/BlankGenerator';
-import InputManager from '../pages/InputManager';
-import ListManager from '../pages/ListManager';
-import Settings from '../pages/Settings';
-import Developer from '../pages/Developer';
+const Connections = lazy(() => import('../pages/Connections'));
+const ShortcutGenerator = lazy(() => import('../pages/ShortcutGenerator'));
+const BlankGenerator = lazy(() => import('../pages/BlankGenerator'));
+const InputManager = lazy(() => import('../pages/InputManager'));
+const ListManager = lazy(() => import('../pages/ListManager'));
+const Settings = lazy(() => import('../pages/Settings'));
+const Developer = lazy(() => import('../pages/Developer'));
 
 const drawerWidth = 240;
 
 interface NavItem {
   text: string;
   icon: JSX.Element;
-  component: JSX.Element;
+  Page: LazyExoticComponent<ComponentType>;
 }
 
 const Layout = () => {
@@ -63,37 +62,37 @@ const Layout = () => {
     {
       text: t('layout.nav.connections'),
       icon: <LinkIcon />,
-      component: <Connections />
+      Page: Connections,
     },
     {
       text: t('layout.nav.shortcutGenerator'),
       icon: <ShortcutIcon />,
-      component: <ShortcutGenerator />
+      Page: ShortcutGenerator,
     },
     {
       text: t('layout.nav.blankGenerator'),
       icon: <CreateIcon />,
-      component: <BlankGenerator />
+      Page: BlankGenerator,
     },
     {
       text: t('layout.nav.inputManager'),
       icon: <ViewListIcon />,
-      component: <InputManager />
+      Page: InputManager,
     },
     {
       text: t('layout.nav.listManager'),
       icon: <PlaylistPlayIcon />,
-      component: <ListManager />
+      Page: ListManager,
     },
     {
       text: t('layout.nav.settings'),
       icon: <SettingsIcon />,
-      component: <Settings />
+      Page: Settings,
     },
     {
       text: t('layout.nav.developer'),
       icon: <CodeIcon />,
-      component: <Developer />
+      Page: Developer,
     },
   ], [t]);
 
@@ -127,6 +126,8 @@ const Layout = () => {
       </List>
     </div>
   );
+
+  const ActivePage = navItems[selectedIndex].Page;
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -195,7 +196,15 @@ const Layout = () => {
           boxSizing: 'border-box'
         }}
       >
-        {navItems[selectedIndex].component}
+        <Suspense
+          fallback={(
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+              <CircularProgress aria-label={t('app.loadingTheme')} />
+            </Box>
+          )}
+        >
+          <ActivePage />
+        </Suspense>
       </Box>
     </Box>
   );

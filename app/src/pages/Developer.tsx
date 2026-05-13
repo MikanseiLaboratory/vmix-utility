@@ -1,21 +1,19 @@
-import {
-  Box,
-  Typography,
-  Paper,
-  Grid2,
-  Card,
-  CardContent,
-  Button,
-  Chip,
-  Avatar,
-  Link,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  SvgIcon,
-} from '@mui/material';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import Grid2 from '@mui/material/Grid2';
+import Link from '@mui/material/Link';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Paper from '@mui/material/Paper';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
+import Typography from '@mui/material/Typography';
 import {
   GitHub,
   Code,
@@ -24,7 +22,6 @@ import {
   Public,
 } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { SvgIconProps } from '@mui/material/SvgIcon';
 import { useTranslation, Trans } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 

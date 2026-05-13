@@ -4,29 +4,27 @@ import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
 import ConnectionSelector from '../components/ConnectionSelector';
-import {
-  Box,
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Button,
-  TableSortLabel,
-  IconButton,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Snackbar,
-  Skeleton
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
+import Snackbar from '@mui/material/Snackbar';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TableSortLabel from '@mui/material/TableSortLabel';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -420,17 +418,17 @@ const InputManager = () => {
           sx={{ mb: spacing.spacing }}
         />
 
-        {error && (
+        {error ? (
           <Alert severity="error" sx={{ mb: spacing.spacing }} onClose={() => setError(null)}>
             {error}
           </Alert>
-        )}
+        ) : null}
 
-        {connections.length === 0 && (
+        {connections.length === 0 ? (
           <Alert severity="info" sx={{ mb: spacing.spacing }}>
             {t('inputManager.noConnectionsAlert')}
           </Alert>
-        )}
+        ) : null}
 
       </Paper>
       
@@ -526,7 +524,7 @@ const InputManager = () => {
           {toast.message}
         </Alert>
       </Snackbar>
-      {connections.length > 0 && (
+      {connections.length > 0 ? (
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
@@ -542,7 +540,7 @@ const InputManager = () => {
             {t('inputManager.applyAll')}
           </Button>
         </Box>
-      )}
+      ) : null}
       
       <Dialog
         open={deleteDialogOpen}

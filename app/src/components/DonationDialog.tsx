@@ -1,19 +1,16 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  FormControlLabel,
-  Checkbox,
-  SvgIcon,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
+import Typography from '@mui/material/Typography';
 import { FavoriteOutlined } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useState } from 'react';
-import { SvgIconProps } from '@mui/material/SvgIcon';
 import { useTranslation, Trans } from 'react-i18next';
 
 const TwitchIcon = (props: SvgIconProps) => (

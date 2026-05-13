@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { SelectChangeEvent } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import { useTranslation } from 'react-i18next';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { useUISettings } from '../hooks/useUISettings.tsx';
@@ -8,25 +8,23 @@ import { invoke } from '@tauri-apps/api/core';
 import { applySavedLocale } from '../i18n/config';
 import type { SettingsLocaleChoice } from '../i18n/locale';
 import { parseStoredLocaleForSettings } from '../i18n/locale';
-import {
-  Box,
-  Typography,
-  Paper,
-  Switch,
-  FormControlLabel,
-  Button,
-  Divider,
-  Grid2,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  FormGroup,
-  Alert,
-  Snackbar,
-  IconButton,
-  CircularProgress,
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormGroup from '@mui/material/FormGroup';
+import Grid2 from '@mui/material/Grid2';
+import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
+import Snackbar from '@mui/material/Snackbar';
+import Switch from '@mui/material/Switch';
+import Typography from '@mui/material/Typography';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 
 const Settings = () => {
@@ -303,7 +301,7 @@ const Settings = () => {
               />
             </FormGroup>
 
-            {settings.saveLogsToFile && (
+            {settings.saveLogsToFile ? (
               <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2" color="textSecondary">
                   {t('settings.openLogsDirectory')}
@@ -317,7 +315,7 @@ const Settings = () => {
                   <FolderOpenIcon />
                 </IconButton>
               </Box>
-            )}
+            ) : null}
           </Grid2>
 
           <Grid2 size={12}>
@@ -440,7 +438,7 @@ const Settings = () => {
               >
                 {checkingUpdate ? t('settings.checkingUpdates') : t('settings.checkForUpdates')}
               </Button>
-              {updateInfo?.available && (
+              {updateInfo?.available ? (
                 <Button
                   variant="contained"
                   color="primary"
@@ -449,7 +447,7 @@ const Settings = () => {
                 >
                   {t('settings.installUpdate')}
                 </Button>
-              )}
+              ) : null}
             </Box>
           </Box>
         ) : (
