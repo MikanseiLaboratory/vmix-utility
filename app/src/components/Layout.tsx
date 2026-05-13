@@ -90,7 +90,7 @@ const Layout = () => {
       Page: Settings,
     },
     {
-      text: t('layout.nav.developer'),
+      text: t('layout.nav.about'),
       icon: <CodeIcon />,
       Page: Developer,
     },
