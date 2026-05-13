@@ -85,12 +85,7 @@
     "hostHelper": "vMixインスタンスのIPアドレスまたはHostを入力",
     "portFieldLabel": "Port",
     "portPlaceholderHttp": "8088",
-    "portPlaceholderTcp": "8099",
-    "portHelperTcp": "TCP API Port（固定: 8099）",
     "portHelperHttp": "HTTP API Port（既定: 8088）",
-    "connectionType": "接続タイプ",
-    "httpApi": "HTTP API",
-    "tcpApi": "TCP API（実験的）",
     "labelDialogTitle": "接続Labelを編集",
     "hostPrefix": "Host:",
     "labelPlaceholder": "この接続のわかりやすい名前",
@@ -119,8 +114,7 @@
     "failScan": "ネットワークスキャンに失敗: {{error}}",
     "failLabel": "Labelの更新に失敗: {{error}}",
     "failLoadSettings": "設定の読み込みに失敗しました",
-    "http": "HTTP",
-    "tcp": "TCP"
+    "http": "HTTP"
   },
   "settings": {
     "applicationSettings": "アプリケーション設定",

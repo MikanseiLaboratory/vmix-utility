@@ -3,7 +3,6 @@ use crate::types::{
     DonationPromptConfig, VmixConnection, VmixInput, VmixVideoListInput,
 };
 use crate::http_client::VmixClientWrapper;
-use crate::tcp_manager::TcpVmixManager;
 use crate::app_log;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,7 +23,6 @@ pub struct VideoListWindow {
 
 pub struct AppState {
     pub http_connections: Arc<Mutex<Vec<VmixClientWrapper>>>,
-    pub tcp_connections: Arc<Mutex<Vec<TcpVmixManager>>>,
     pub auto_refresh_configs: Arc<Mutex<HashMap<String, AutoRefreshConfig>>>,
     pub last_status_cache: Arc<Mutex<HashMap<String, VmixConnection>>>,
     pub inputs_cache: Arc<Mutex<HashMap<String, Vec<VmixInput>>>>,
@@ -39,7 +37,6 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             http_connections: Arc::new(Mutex::new(Vec::new())),
-            tcp_connections: Arc::new(Mutex::new(Vec::new())),
             auto_refresh_configs: Arc::new(Mutex::new(HashMap::new())),
             last_status_cache: Arc::new(Mutex::new(HashMap::new())),
             inputs_cache: Arc::new(Mutex::new(HashMap::new())),
@@ -95,16 +92,13 @@ impl AppState {
         
         let config = {
             let http_connections = self.http_connections.lock().unwrap();
-            let tcp_connections = self.tcp_connections.lock().unwrap();
             let labels = self.connection_labels.lock().unwrap();
             let auto_configs = self.auto_refresh_configs.lock().unwrap();
             
             println!("Current HTTP connections count: {}", http_connections.len());
-            println!("Current TCP connections count: {}", tcp_connections.len());
             
             let mut all_connections = Vec::new();
             
-            // Add HTTP connections
             for conn in http_connections.iter() {
                 let host = conn.host().to_string();
                 let label = labels.get(&host).cloned().unwrap_or_else(|| format!("{} (HTTP)", host));
@@ -117,22 +111,6 @@ impl AppState {
                     label,
                     auto_refresh,
                     connection_type: ConnectionType::Http,
-                });
-            }
-            
-            // Add TCP connections
-            for conn in tcp_connections.iter() {
-                let host = conn.host().to_string();
-                let label = labels.get(&host).cloned().unwrap_or_else(|| format!("{} (TCP)", host));
-                let auto_refresh = auto_configs.get(&host).cloned().unwrap_or_default();
-                println!("Saving TCP connection: {} -> {}", host, label);
-                
-                all_connections.push(ConnectionConfig {
-                    host: host.clone(),
-                    port: conn.port(),
-                    label,
-                    auto_refresh,
-                    connection_type: ConnectionType::Tcp,
                 });
             }
             
@@ -173,10 +151,6 @@ impl AppState {
             http_connections.clear();
         }
         {
-            let mut tcp_connections = self.tcp_connections.lock().unwrap();
-            tcp_connections.clear();
-        }
-        {
             let mut labels = self.connection_labels.lock().unwrap();
             labels.clear();
         }
@@ -185,22 +159,14 @@ impl AppState {
             auto_configs.clear();
         }
         
-        // Load connections from config
+        // Load connections from config (HTTP only; legacy TCP entries are migrated when deserializing)
         for (i, conn_config) in config.connections.iter().enumerate() {
             println!("Loading connection {}: {} ({}) - {:?}", i, conn_config.host, conn_config.label, conn_config.connection_type);
             
-            match conn_config.connection_type {
-                ConnectionType::Http => {
-                    let vmix_client = VmixClientWrapper::new(&conn_config.host, conn_config.port);
-                    {
-                        let mut http_connections = self.http_connections.lock().unwrap();
-                        http_connections.push(vmix_client);
-                    }
-                },
-                ConnectionType::Tcp => {
-                    // TCP接続はあとで実際に接続時に作成する
-                    println!("TCP connection config loaded, will create on connect: {}", conn_config.host);
-                }
+            let vmix_client = VmixClientWrapper::new(&conn_config.host, conn_config.port);
+            {
+                let mut http_connections = self.http_connections.lock().unwrap();
+                http_connections.push(vmix_client);
             }
             
             {

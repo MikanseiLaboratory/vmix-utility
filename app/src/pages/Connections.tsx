@@ -21,8 +21,6 @@ import FormLabel from '@mui/material/FormLabel';
 import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
 import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Switch from '@mui/material/Switch';
@@ -49,7 +47,6 @@ interface Connection {
   status: 'Connected' | 'Disconnected' | 'Reconnecting';
   activeInput: number;
   previewInput: number;
-  connectionType: 'Http' | 'Tcp';
   version: string;
   edition: string;
   preset?: string;
@@ -63,7 +60,6 @@ const Connections: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [newHost, setNewHost] = useState('');
   const [newPort, setNewPort] = useState(8088);
-  const [newConnectionType, setNewConnectionType] = useState<'Http' | 'Tcp'>('Http');
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | null>(null);
   const [newLabel, setNewLabel] = useState('');
@@ -104,7 +100,6 @@ const Connections: React.FC = () => {
       status: conn.status as 'Connected' | 'Disconnected' | 'Reconnecting',
       activeInput: conn.active_input,
       previewInput: conn.preview_input,
-      connectionType: conn.connection_type,
       version: conn.version,
       edition: conn.edition,
       preset: conn.preset,
@@ -155,7 +150,6 @@ const Connections: React.FC = () => {
     setOpen(false);
     setNewHost('');
     setNewPort(8088);
-    setNewConnectionType('Http');
     setError(null);
   };
 
@@ -178,10 +172,8 @@ const Connections: React.FC = () => {
     setBackgroundConnections(prev => new Set([...prev, trimmedHost]));
     
     // Start background connection process
-    const portToUse = newConnectionType === 'Tcp' ? 8099 : newPort;
-    
     try {
-      await connectVMix(trimmedHost, portToUse, newConnectionType);
+      await connectVMix(trimmedHost, newPort);
       
       // Add success notification
       setConnectionNotifications(prev => [...prev, {
@@ -288,7 +280,7 @@ const Connections: React.FC = () => {
     setBackgroundConnections(prev => new Set([...prev, ipAddress]));
     
     try {
-      await connectVMix(ipAddress, 8088, 'Http');
+      await connectVMix(ipAddress, 8088);
       
       // Refresh connections to update the UI
       await refreshConnections();
@@ -325,7 +317,7 @@ const Connections: React.FC = () => {
     setBackgroundConnections(prev => new Set([...prev, connection.host]));
     
     try {
-      await connectVMix(connection.host, connection.port, connection.connectionType);
+      await connectVMix(connection.host, connection.port);
       
       // Add success notification
       setConnectionNotifications(prev => [...prev, {
@@ -373,7 +365,7 @@ const Connections: React.FC = () => {
       // Only try to reconnect if the connection is connected or reconnecting
       if (editingConnection.status === 'Connected' || editingConnection.status === 'Reconnecting') {
         try {
-          await connectVMix(editingConnection.host, editingConnection.port, editingConnection.connectionType);
+          await connectVMix(editingConnection.host, editingConnection.port);
         } catch (reconnectError) {
           console.error('Failed to reconnect after label update:', reconnectError);
           // Don't show error for reconnect failure as label was updated successfully
@@ -594,7 +586,6 @@ const Connections: React.FC = () => {
                   status: 'Reconnecting' as const,
                   activeInput: 0,
                   previewInput: 0,
-                  connectionType: 'Http' as const, // Default type, will be updated when connection is established
                   version: t('connections.connectingEllipsis'),
                   edition: t('connections.connectingEllipsis'),
                   preset: undefined,
@@ -691,11 +682,11 @@ const Connections: React.FC = () => {
                       variant="body2" 
                       sx={{ 
                         fontSize: '0.75rem',
-                        color: connection.connectionType === 'Tcp' ? 'primary.main' : 'text.primary',
+                        color: 'text.primary',
                         fontWeight: 500,
                       }}
                     >
-                      {connection.connectionType === 'Tcp' ? t('connections.tcp') : t('connections.http')}
+                      {t('connections.http')}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ 
@@ -993,15 +984,12 @@ const Connections: React.FC = () => {
             type="number"
             fullWidth
             variant="outlined"
-            value={newConnectionType === 'Tcp' ? 8099 : newPort}
+            value={newPort}
             onChange={(e) => {
-              if (newConnectionType === 'Http') {
-                setNewPort(parseInt(e.target.value) || 8088);
-              }
+              setNewPort(parseInt(e.target.value) || 8088);
             }}
-            placeholder={newConnectionType === 'Tcp' ? t('connections.portPlaceholderTcp') : t('connections.portPlaceholderHttp')}
-            helperText={newConnectionType === 'Tcp' ? t('connections.portHelperTcp') : t('connections.portHelperHttp')}
-            disabled={newConnectionType === 'Tcp'}
+            placeholder={t('connections.portPlaceholderHttp')}
+            helperText={t('connections.portHelperHttp')}
             InputProps={{
               inputProps: {
                 min: 1,
@@ -1009,25 +997,6 @@ const Connections: React.FC = () => {
               }
             }}
           />
-          <FormControl component="fieldset" sx={{ mt: 2, mb: 1 }}>
-            <FormLabel component="legend">{t('connections.connectionType')}</FormLabel>
-            <RadioGroup
-              row
-              value={newConnectionType}
-              onChange={(e) => setNewConnectionType(e.target.value as 'Http' | 'Tcp')}
-            >
-              <FormControlLabel
-                value="Http"
-                control={<Radio />}
-                label={t('connections.httpApi')}
-              />
-              <FormControlLabel
-                value="Tcp"
-                control={<Radio />}
-                label={t('connections.tcpApi')}
-              />
-            </RadioGroup>
-          </FormControl>
           {error ? (
             <Alert severity="error" sx={{ mt: 2 }}>
               {error}
