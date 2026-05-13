@@ -5,7 +5,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
 import ConnectionSelector from '../components/ConnectionSelector';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -69,21 +69,21 @@ interface ShortcutData {
   Parameters: Array<string> | null;
 }
 
+type VirtualizedInputItemData = {
+  filteredInputs: Input[];
+  vmixInputs: VmixInput[];
+  selectedConnection: string;
+  showToast: (message: string, severity?: 'success' | 'error' | 'info') => void;
+  onTryCommand: (input: Input) => void | Promise<void>;
+  lastClickedInputId: number | null;
+  onInputClick: (inputId: number) => void;
+  spacing: ReturnType<typeof getDensitySpacing>;
+  t: TFunction;
+};
+
 // Virtualized row component for react-window
-const VirtualizedInputItem = memo(({ index, style, data }: {
-  index: number;
-  style: React.CSSProperties;
-  data: {
-    filteredInputs: Input[];
-    vmixInputs: VmixInput[];
-    selectedConnection: string;
-    showToast: (message: string, severity?: 'success' | 'error' | 'info') => void;
-    onTryCommand: (input: Input) => void;
-    lastClickedInputId: number | null;
-    onInputClick: (inputId: number) => void;
-    t: TFunction;
-  };
-}) => {
+const VirtualizedInputItem = memo((props: ListChildComponentProps<VirtualizedInputItemData>) => {
+  const { index, style, data } = props;
   const { filteredInputs, vmixInputs, selectedConnection, showToast, onTryCommand, lastClickedInputId, onInputClick, t } = data;
   const input = filteredInputs[index];
   const vmixInput = vmixInputs.find(vi => vi.number === input.number);
@@ -163,7 +163,7 @@ const VirtualizedInputItem = memo(({ index, style, data }: {
   }, [vmixInput, showToast, onInputClick, input.id, t]);
 
   return (
-    <Box style={style}>
+    <div style={style as React.CSSProperties}>
       <Box 
         sx={{ 
           p: 1, 
@@ -321,7 +321,7 @@ const VirtualizedInputItem = memo(({ index, style, data }: {
         </Box>
       </Box>
       {!isLastItem ? <Divider /> : null}
-    </Box>
+    </div>
   );
 });
 
