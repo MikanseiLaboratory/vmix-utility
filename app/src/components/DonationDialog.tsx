@@ -31,6 +31,10 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
   const { t } = useTranslation();
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  const openInBrowser = (url: string) => {
+    openUrl(url);
+  };
+
   const handleClose = () => {
     onClose(dontShowAgain);
   };
@@ -75,7 +79,7 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
               fontSize: '1.1rem',
             }}
             startIcon={<TwitchIcon />}
-            onClick={() => openUrl('https://subs.twitch.tv/flowingspdg')}
+            onClick={() => openInBrowser('https://subs.twitch.tv/flowingspdg')}
             fullWidth
           >
             {t('donation.subscribe')}
