@@ -55,7 +55,6 @@ async fn check_for_updates_with_dialog(app_handle: tauri::AppHandle, show_no_upd
 pub mod types;
 pub mod logging;
 pub mod http_client;
-pub mod tcp_manager;
 pub mod state;
 pub mod commands;
 pub mod network_scanner;

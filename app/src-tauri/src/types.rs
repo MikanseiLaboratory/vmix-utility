@@ -44,16 +44,56 @@ pub struct VmixInput {
     pub state: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// vMix connections use the HTTP API only (legacy `"Tcp"` in config is migrated on load).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub enum ConnectionType {
     Http,
-    Tcp,
 }
 
 impl Default for ConnectionType {
     fn default() -> Self {
         ConnectionType::Http
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+enum SavedConnectionType {
+    Http,
+    Tcp,
+}
+
+impl Default for SavedConnectionType {
+    fn default() -> Self {
+        SavedConnectionType::Http
+    }
+}
+
+#[derive(Deserialize)]
+struct ConnectionConfigDe {
+    host: String,
+    port: u16,
+    label: String,
+    auto_refresh: AutoRefreshConfig,
+    #[serde(default)]
+    connection_type: SavedConnectionType,
+}
+
+impl From<ConnectionConfigDe> for ConnectionConfig {
+    fn from(c: ConnectionConfigDe) -> Self {
+        // Legacy TCP API used port 8099; HTTP default is 8088.
+        let port = match c.connection_type {
+            SavedConnectionType::Tcp if c.port == 8099 => 8088,
+            _ => c.port,
+        };
+        ConnectionConfig {
+            host: c.host,
+            port,
+            label: c.label,
+            auto_refresh: c.auto_refresh,
+            connection_type: ConnectionType::Http,
+        }
     }
 }
 
@@ -118,14 +158,22 @@ impl<'de> Deserialize<'de> for AutoRefreshConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConnectionConfig {
     pub host: String,
     pub port: u16,
     pub label: String,
     pub auto_refresh: AutoRefreshConfig,
-    #[serde(default)]
     pub connection_type: ConnectionType,
+}
+
+impl<'de> Deserialize<'de> for ConnectionConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        ConnectionConfigDe::deserialize(deserializer).map(Into::into)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

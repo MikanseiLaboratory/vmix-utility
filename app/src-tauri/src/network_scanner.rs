@@ -84,17 +84,10 @@ pub async fn scan_network_for_vmix(interface_name: String, app_state: &crate::st
     // 既に接続されているIPアドレスのリストを取得
     let connected_hosts = {
         let http_connections = app_state.http_connections.lock().unwrap();
-        let tcp_connections = app_state.tcp_connections.lock().unwrap();
         
         let mut hosts = std::collections::HashSet::new();
         
-        // HTTP接続からIPアドレスを取得
         for conn in http_connections.iter() {
-            hosts.insert(conn.host().to_string());
-        }
-        
-        // TCP接続からIPアドレスを取得
-        for conn in tcp_connections.iter() {
             hosts.insert(conn.host().to_string());
         }
         

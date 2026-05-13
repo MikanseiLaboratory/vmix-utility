@@ -54,7 +54,6 @@
     "showFullPaths": "Show full paths",
     "host": "Host",
     "port": "Port",
-    "type": "Type",
     "status": "Status",
     "version": "Version",
     "edition": "Edition",
@@ -85,12 +84,7 @@
     "hostHelper": "Enter the IP address or hostname of your vMix instance",
     "portFieldLabel": "Port",
     "portPlaceholderHttp": "8088",
-    "portPlaceholderTcp": "8099",
-    "portHelperTcp": "TCP API port (fixed: 8099)",
     "portHelperHttp": "HTTP API port (default: 8088)",
-    "connectionType": "Connection Type",
-    "httpApi": "HTTP API",
-    "tcpApi": "TCP API (Experimental)",
     "labelDialogTitle": "Edit Connection Label",
     "hostPrefix": "Host:",
     "labelPlaceholder": "Enter a friendly name for this connection",
@@ -118,9 +112,7 @@
     "failInterfaces": "Failed to load network interfaces: {{error}}",
     "failScan": "Network scan failed: {{error}}",
     "failLabel": "Failed to update label: {{error}}",
-    "failLoadSettings": "Failed to load settings",
-    "http": "HTTP",
-    "tcp": "TCP"
+    "failLoadSettings": "Failed to load settings"
   },
   "settings": {
     "applicationSettings": "Application Settings",

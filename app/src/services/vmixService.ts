@@ -9,7 +9,7 @@ export interface VmixConnection {
   status: string;
   active_input: number;
   preview_input: number;
-  connection_type: 'Http' | 'Tcp';
+  connection_type: 'Http';
   version: string;
   edition: string;
   preset?: string;
@@ -59,8 +59,8 @@ export interface AutoRefreshConfig {
  */
 export const vmixService = {
   // Connection management
-  async connectVMix(host: string, port?: number, connectionType: 'Http' | 'Tcp' = 'Http'): Promise<VmixConnection> {
-    return invoke<VmixConnection>('connect_vmix', { host, port, connectionType });
+  async connectVMix(host: string, port?: number): Promise<VmixConnection> {
+    return invoke<VmixConnection>('connect_vmix', { host, port });
   },
 
   async disconnectVMix(host: string): Promise<void> {

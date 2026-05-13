@@ -11,7 +11,7 @@ interface VMixStatusContextType {
   videoListsLoading: Record<string, boolean>; // Track loading state for each host's video lists
   inputs: Record<string, VmixInput[]>; // inputs by host
   videoLists: Record<string, VmixVideoListInput[]>; // video lists by host
-  connectVMix: (host: string, port?: number, connectionType?: 'Http' | 'Tcp') => Promise<VmixConnection>;
+  connectVMix: (host: string, port?: number) => Promise<VmixConnection>;
   disconnectVMix: (host: string) => Promise<void>;
   setAutoRefreshConfig: (host: string, config: AutoRefreshConfig) => Promise<void>;
   getAutoRefreshConfig: (host: string) => Promise<AutoRefreshConfig>;
@@ -191,7 +191,7 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // Listen for inputs updates (especially for TCP connections)
+  // Listen for inputs updates from the backend (e.g. auto-refresh)
   useEffect(() => {
     const unlistenInputs = vmixService.listenForInputsUpdates((event) => {
       const { host, inputs: updatedInputs } = event.payload;
@@ -268,10 +268,10 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
   }, [loadConnections, loadAutoRefreshConfigs]);
 
 
-  const connectVMix = useCallback(async (host: string, port?: number, connectionType: 'Http' | 'Tcp' = 'Http'): Promise<VmixConnection> => {
+  const connectVMix = useCallback(async (host: string, port?: number): Promise<VmixConnection> => {
     try {
-      console.log('Connecting to vMix:', host, port, connectionType);
-      const connection = await vmixService.connectVMix(host, port, connectionType);
+      console.log('Connecting to vMix:', host, port);
+      const connection = await vmixService.connectVMix(host, port);
       setConnections(prev => {
         const existingIndex = prev.findIndex(conn => conn.host === host);
         if (existingIndex >= 0) {
