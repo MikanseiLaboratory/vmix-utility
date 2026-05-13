@@ -197,6 +197,10 @@ impl ToString for UIDensity {
     }
 }
 
+fn default_locale() -> String {
+    String::new()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub default_vmix_ip: String,
@@ -204,6 +208,8 @@ pub struct AppSettings {
     pub theme: ThemeMode,
     #[serde(default)]
     pub ui_density: UIDensity,
+    #[serde(default = "default_locale")]
+    pub locale: String,
 }
 
 impl Default for AppSettings {
@@ -213,6 +219,7 @@ impl Default for AppSettings {
             default_vmix_port: 8088,
             theme: ThemeMode::Auto,
             ui_density: UIDensity::default(),
+            locale: default_locale(),
         }
     }
 }

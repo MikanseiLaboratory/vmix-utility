@@ -1,19 +1,17 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  FormControlLabel,
-  Checkbox,
-  SvgIcon,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
+import Typography from '@mui/material/Typography';
 import { FavoriteOutlined } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useState } from 'react';
-import { SvgIconProps } from '@mui/material/SvgIcon';
+import { useTranslation, Trans } from 'react-i18next';
 
 const TwitchIcon = (props: SvgIconProps) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -27,14 +25,15 @@ interface DonationDialogProps {
 }
 
 const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
+  const { t } = useTranslation();
   const [dontShowAgain, setDontShowAgain] = useState(false);
-
-  const handleClose = () => {
-    onClose(dontShowAgain);
-  };
 
   const openInBrowser = (url: string) => {
     openUrl(url);
+  };
+
+  const handleClose = () => {
+    onClose(dontShowAgain);
   };
 
   return (
@@ -47,22 +46,24 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <FavoriteOutlined color="error" />
-          <span>Support vmix-utility</span>
+          <span>{t('donation.title')}</span>
         </Box>
       </DialogTitle>
 
       <DialogContent>
         <Typography variant="body1" gutterBottom>
-          Thank you for using vmix-utility!
+          {t('donation.thanks')}
         </Typography>
 
         <Typography variant="body2" color="text.secondary" paragraph>
-          This project is open source and completely free to use.
-          If you find it helpful, please consider supporting its continued development via Twitch subscriptions.
+          {t('donation.body1')}
         </Typography>
 
         <Typography variant="body2" color="text.secondary" paragraph>
-          <strong>💡 Did you know?</strong> If you have Amazon Prime, you can subscribe for free each month via Prime Gaming! Twitch subscriptions don't auto-renew, so you can choose to support the project every month.
+          <Trans
+            i18nKey="donation.body2"
+            components={{ strong: <strong /> }}
+          />
         </Typography>
 
         <Box sx={{ mt: 2 }}>
@@ -78,7 +79,7 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
             onClick={() => openInBrowser('https://subs.twitch.tv/flowingspdg')}
             fullWidth
           >
-            Subscribe on Twitch
+            {t('donation.subscribe')}
           </Button>
         </Box>
 
@@ -92,7 +93,7 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
             }
             label={
               <Typography variant="body2" color="text.secondary">
-                Don't show this again
+                {t('donation.dontShowAgain')}
               </Typography>
             }
           />
@@ -101,7 +102,7 @@ const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
 
       <DialogActions>
         <Button onClick={handleClose}>
-          Close
+          {t('donation.close')}
         </Button>
       </DialogActions>
     </Dialog>

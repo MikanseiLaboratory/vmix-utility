@@ -1,21 +1,19 @@
-import {
-  Box,
-  Typography,
-  Paper,
-  Grid2,
-  Card,
-  CardContent,
-  Button,
-  Chip,
-  Avatar,
-  Link,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  SvgIcon,
-} from '@mui/material';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import Grid2 from '@mui/material/Grid2';
+import Link from '@mui/material/Link';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Paper from '@mui/material/Paper';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
+import Typography from '@mui/material/Typography';
 import {
   GitHub,
   Code,
@@ -24,7 +22,7 @@ import {
   Public,
 } from '@mui/icons-material';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { SvgIconProps } from '@mui/material/SvgIcon';
+import { useTranslation, Trans } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 
 const TwitchIcon = (props: SvgIconProps) => (
@@ -33,23 +31,29 @@ const TwitchIcon = (props: SvgIconProps) => (
   </SvgIcon>
 );
 
+const DiscordIcon = (props: SvgIconProps) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+  </SvgIcon>
+);
+
 const Developer = () => {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const repositoryUrl = 'https://github.com/MikanseiLaboratory/vmix-utility';
   const developerGitHub = 'https://github.com/MikanseiLaboratory';
   const mikanseiLaboratoryUrl = 'https://mikanseilaboratory.github.io/';
   const twitchSupportUrl = 'https://subs.twitch.tv/flowingspdg';
+  const discordInviteUrl = 'https://discord.gg/YUbmg9Hq37';
 
   const openInBrowser = (url: string) => {
     openUrl(url);
   };
 
-
   return (
     <Box sx={{ p: 3 }}>
 
       <Grid2 container spacing={3}>
-        {/* Repository Information */}
         <Grid2 size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ height: '100%' }}>
             <CardContent>
@@ -59,18 +63,18 @@ const Developer = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h6" component="h2">
-                    Repository
+                    {t('developer.repository')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Open Source Project
+                    {t('developer.openSource')}
                   </Typography>
                 </Box>
               </Box>
-              
+
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                This project is open source and available on GitHub.
+                {t('developer.repoBody')}
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                 <Chip label="MIT License" variant="outlined" size="small" />
                 <Chip label="TypeScript" variant="outlined" size="small" />
@@ -78,20 +82,19 @@ const Developer = () => {
                 <Chip label="Tauri" variant="outlined" size="small" />
                 <Chip label="Rust" variant="outlined" size="small" />
               </Box>
-              
+
               <Button
                 variant="contained"
                 startIcon={<GitHub />}
                 onClick={() => openInBrowser(repositoryUrl)}
                 fullWidth
               >
-                View on GitHub
+                {t('developer.viewGithub')}
               </Button>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* Developer Information */}
         <Grid2 size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ height: '100%' }}>
             <CardContent>
@@ -101,16 +104,16 @@ const Developer = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h6" component="h2">
-                    未完成成果物研究所
+                    {t('developer.orgTitle')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    MikanseiLaboratory · Broadcast · Stream · Engineering
+                    {t('developer.orgSubtitle')}
                   </Typography>
                 </Box>
               </Box>
 
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                配信プロダクション向けツールとハードウェア機材の研究開発を行う技術者コミュニティです。完成の一歩手前にある成果物から、本質的な課題解決を目指しています。
+                {t('developer.orgBody')}
               </Typography>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
@@ -120,7 +123,7 @@ const Developer = () => {
                   onClick={() => openInBrowser(mikanseiLaboratoryUrl)}
                   fullWidth
                 >
-                  未完成成果物研究所（公式サイト）
+                  {t('developer.officialSite')}
                 </Button>
                 <Button
                   variant="outlined"
@@ -128,32 +131,31 @@ const Developer = () => {
                   onClick={() => openInBrowser(developerGitHub)}
                   fullWidth
                 >
-                  Visit GitHub Organization
+                  {t('developer.visitOrgGithub')}
                 </Button>
               </Box>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* Support & Donations */}
         <Grid2 size={12}>
           <Card elevation={3}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <FavoriteOutlined sx={{ mr: 1, color: 'error.main' }} />
                 <Typography variant="h6" component="h2">
-                  Support the Project
+                  {t('developer.supportTitle')}
                 </Typography>
               </Box>
 
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                If you find this project helpful, consider supporting its development via Twitch subscriptions.
+                {t('developer.supportBody')}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                <strong>💡 Did you know?</strong> If you have Amazon Prime, you can subscribe for free each month via Prime Gaming! Twitch subscriptions don't auto-renew, so you can choose to support the project every month.
+                <Trans i18nKey="developer.supportTip" components={{ strong: <strong /> }} />
               </Typography>
 
-              <Box sx={{ mt: 1 }}>
+              <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Button
                   variant="contained"
                   sx={{
@@ -166,33 +168,46 @@ const Developer = () => {
                   onClick={() => openInBrowser(twitchSupportUrl)}
                   fullWidth
                 >
-                  Subscribe on Twitch
+                  {t('developer.subscribeTwitch')}
+                </Button>
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: '#5865F2',
+                    '&:hover': { backgroundColor: '#4752C4' },
+                    height: '56px',
+                    fontSize: '1.1rem',
+                  }}
+                  startIcon={<DiscordIcon />}
+                  onClick={() => openInBrowser(discordInviteUrl)}
+                  fullWidth
+                >
+                  {t('developer.joinDiscord')}
                 </Button>
               </Box>
             </CardContent>
           </Card>
         </Grid2>
 
-        {/* License Information */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Description sx={{ mr: 1 }} />
               <Typography variant="h6" component="h2">
-                License
+                {t('developer.licenseTitle')}
               </Typography>
             </Box>
-            
+
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              This project is licensed under the MIT License.
+              {t('developer.licenseBody')}
             </Typography>
-            
+
             <Divider sx={{ my: 2 }} />
-            
-            <Box sx={{ 
-              bgcolor: resolvedTheme === 'dark' ? 'grey.800' : 'grey.50', 
-              p: 2, 
-              borderRadius: 1 
+
+            <Box sx={{
+              bgcolor: resolvedTheme === 'dark' ? 'grey.800' : 'grey.50',
+              p: 2,
+              borderRadius: 1
             }}>
               <Typography variant="body2" component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                 {`MIT License
@@ -218,28 +233,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`}
               </Typography>
             </Box>
-            
+
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              For more information, see the{' '}
+              {t('developer.licenseMore')}{' '}
               <Link
                 component="button"
                 onClick={() => openInBrowser(`${repositoryUrl}/blob/master/LICENSE`)}
                 sx={{ textDecoration: 'underline', cursor: 'pointer' }}
               >
-                LICENSE file
+                {t('developer.licenseFile')}
               </Link>{' '}
-              in the repository.
+              {t('developer.licenseInRepo')}
             </Typography>
           </Paper>
         </Grid2>
 
-        {/* Special Thanks */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Special Thanks
+              {t('developer.specialThanks')}
             </Typography>
-            
+
             <List>
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
@@ -254,10 +268,10 @@ SOFTWARE.`}
                       onClick={() => openInBrowser('https://github.com/FlowingSPDG')}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Shugo "FlowingSPDG" Kawamura
+                      Shugo &quot;FlowingSPDG&quot; Kawamura
                     </Link>
                   }
-                  secondary="Original Creator & Developer - Created and developed vmix-utility"
+                  secondary={t('developer.thanksFlowingSecondary')}
                 />
               </ListItem>
               <ListItem sx={{ pl: 0 }}>
@@ -276,20 +290,19 @@ SOFTWARE.`}
                       GuleruuN
                     </Link>
                   }
-                  secondary="Logo Designer - Created the beautiful vmix-utility logo"
+                  secondary={t('developer.thanksGulerSecondary')}
                 />
               </ListItem>
             </List>
           </Paper>
         </Grid2>
 
-        {/* Additional Links */}
         <Grid2 size={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Useful Links
+              {t('developer.usefulLinks')}
             </Typography>
-            
+
             <List>
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
@@ -302,13 +315,31 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}/issues`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Report Issues
+                      {t('developer.reportIssues')}
                     </Link>
                   }
-                  secondary="Found a bug or have a feature request?"
+                  secondary={t('developer.reportIssuesSecondary')}
                 />
               </ListItem>
-              
+
+              <ListItem sx={{ pl: 0 }}>
+                <ListItemIcon>
+                  <DiscordIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Link
+                      component="button"
+                      onClick={() => openInBrowser(discordInviteUrl)}
+                      sx={{ textDecoration: 'underline', cursor: 'pointer' }}
+                    >
+                      {t('developer.joinDiscord')}
+                    </Link>
+                  }
+                  secondary={t('developer.discordInviteSecondary')}
+                />
+              </ListItem>
+
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
                   <Description />
@@ -320,13 +351,13 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Documentation
+                      {t('developer.documentation')}
                     </Link>
                   }
-                  secondary="Learn more about using vmix-utility"
+                  secondary={t('developer.documentationSecondary')}
                 />
               </ListItem>
-              
+
               <ListItem sx={{ pl: 0 }}>
                 <ListItemIcon>
                   <Code />
@@ -338,10 +369,10 @@ SOFTWARE.`}
                       onClick={() => openInBrowser(`${repositoryUrl}/pulls`)}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Contribute
+                      {t('developer.contribute')}
                     </Link>
                   }
-                  secondary="Help improve the project with pull requests"
+                  secondary={t('developer.contributeSecondary')}
                 />
               </ListItem>
             </List>

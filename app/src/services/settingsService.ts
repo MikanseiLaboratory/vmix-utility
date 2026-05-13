@@ -5,6 +5,7 @@ export interface AppSettings {
   default_vmix_port: number;
   theme: string;
   ui_density: string;
+  locale?: string;
 }
 
 export interface LoggingConfig {
@@ -41,6 +42,7 @@ export const settingsService = {
     defaultVMixPort: number;
     theme: string;
     uiDensity: string;
+    locale: string;
   }): Promise<void> {
     try {
       await invoke('save_app_settings', {
@@ -49,6 +51,7 @@ export const settingsService = {
           default_vmix_port: settings.defaultVMixPort,
           theme: settings.theme,
           ui_density: settings.uiDensity,
+          locale: settings.locale,
         }
       });
     } catch (error) {

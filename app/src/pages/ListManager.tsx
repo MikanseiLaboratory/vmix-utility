@@ -1,14 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import ConnectionSelector from '../components/ConnectionSelector';
 import CompactVideoListView from '../components/CompactVideoListView';
-import {
-  Box,
-  Card,
-  Typography,
-  Alert,
-  Skeleton,
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
+import Skeleton from '@mui/material/Skeleton';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
 
@@ -33,80 +32,64 @@ interface VmixVideoListInput {
 }
 
 const ListManager: React.FC = () => {
+  const { t } = useTranslation();
   const { videoLists: contextVideoLists, getVMixVideoLists, selectVideoListItem, openVideoListWindow } = useVMixStatus();
   const [_error, _setError] = useState<string | null>(null);
   const [expandedLists] = useState<Set<string>>(new Set());
-  
-  // Use optimized connection selection hook
+
   const { selectedConnection, setSelectedConnection, connectedConnections } = useConnectionSelection();
-  
-  // Use UI settings hook
+
   const { uiDensity } = useUISettings();
   const spacing = getDensitySpacing(uiDensity);
-  
 
-  // Use selectedConnection instead of selectedHost for compatibility
   const selectedHost = selectedConnection;
-  
-  // Get video lists for selected host from context
-  const videoLists = useMemo(() => 
+
+  const videoLists = useMemo(() =>
     selectedHost ? (contextVideoLists[selectedHost] || []) : [],
     [selectedHost, contextVideoLists]
   );
 
-  // Show loading if no connections or no data yet
   const isLoading = connectedConnections.length === 0 || (selectedHost && !contextVideoLists[selectedHost]);
 
-  // Auto-fetch VideoLists when needed - memoized to avoid constant re-fetching
-  useMemo(() => {
+  useEffect(() => {
     if (selectedHost && !contextVideoLists[selectedHost]) {
       console.log(`Auto-fetching VideoLists for host: ${selectedHost}`);
-      // Use Promise.resolve() to avoid blocking render
-      Promise.resolve().then(() => {
-        getVMixVideoLists(selectedHost).catch(error => {
-          console.error(`Failed to auto-fetch VideoLists for ${selectedHost}:`, error);
-        });
+      getVMixVideoLists(selectedHost).catch(error => {
+        console.error(`Failed to auto-fetch VideoLists for ${selectedHost}:`, error);
       });
     }
   }, [selectedHost, contextVideoLists, getVMixVideoLists]);
 
-
   const handleVideoListPopout = async (videoList: VmixVideoListInput) => {
     if (!selectedHost) return;
-    
+
     try {
       await openVideoListWindow(selectedHost, videoList.key, videoList.title);
     } catch (err) {
       console.error('❌ Failed to open VideoList popup window:', err);
-      // You could add a toast notification here in the future
-      // For now, we'll rely on the backend's improved error handling
     }
   };
 
-
   const handleItemSelected = async (listKey: string, itemIndex: number) => {
     if (!selectedHost) return;
-    
+
     try {
-      // Find the video list to get its input number
       const videoList = videoLists.find(list => list.key === listKey);
       if (!videoList) return;
-      
+
       console.log('Selecting item:', itemIndex, 'for list:', listKey);
-      
+
       await selectVideoListItem(selectedHost, videoList.number, itemIndex);
     } catch (err) {
       console.error('Failed to select item:', err);
     }
   };
 
-
-
   if (connectedConnections.length === 0) {
     return (
       <Box>
         <Alert severity="info">
-          No vMix connections available. Please connect to a vMix instance first.
+          {t('listManager.noConnections')}
         </Alert>
       </Box>
     );
@@ -114,27 +97,25 @@ const ListManager: React.FC = () => {
 
   return (
     <Box>
-      {/* Top header */}
       <Typography variant={spacing.headerVariant} sx={{ fontWeight: 'medium', mb: 1 }}>
-        List Manager
+        {t('listManager.title')}
       </Typography>
 
       <Card sx={{ mb: spacing.spacing * 2, p: spacing.cardPadding }}>
         <Typography variant={spacing.headerVariant} gutterBottom>
-          Connection Settings
+          {t('listManager.connectionSettings')}
         </Typography>
         <ConnectionSelector
           selectedConnection={selectedConnection}
           onConnectionChange={setSelectedConnection}
-          label="vMix Connection"
         />
       </Card>
 
-      {_error && (
+      {_error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
           {_error}
         </Alert>
-      )}
+      ) : null}
 
       {isLoading ? (
         <Box sx={{ p: 2 }}>
@@ -144,7 +125,7 @@ const ListManager: React.FC = () => {
         </Box>
       ) : videoLists.length === 0 ? (
         <Alert severity="info">
-          No VideoList inputs found for the selected vMix connection.
+          {t('listManager.noVideoLists')}
         </Alert>
       ) : (
         <CompactVideoListView

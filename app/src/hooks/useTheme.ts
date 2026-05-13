@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
-import { useMediaQuery } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { applySavedLocale } from '../i18n/config';
 
 // Theme mode types matching Rust backend
 export type ThemeMode = 'Light' | 'Dark' | 'Auto';
@@ -18,6 +19,7 @@ interface AppSettings {
   // New UI settings for ListManager
   ui_density?: 'compact' | 'comfortable' | 'spacious';
   show_file_paths?: boolean;
+  locale?: string;
 }
 
 interface ThemeContextType {
@@ -57,7 +59,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       const settings = await invoke<AppSettings>('get_app_settings');
       setThemeModeState(settings.theme);
-      
+      applySavedLocale(settings.locale);
+
       const resolved = resolveTheme(settings.theme, prefersDarkMode);
       setResolvedTheme(resolved);
       
@@ -150,12 +153,15 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     loadThemeSettings();
   }, [loadThemeSettings]);
 
-  const contextValue: ThemeContextType = {
-    themeMode,
-    resolvedTheme,
-    setThemeMode,
-    isLoading,
-  };
+  const contextValue = useMemo<ThemeContextType>(
+    () => ({
+      themeMode,
+      resolvedTheme,
+      setThemeMode,
+      isLoading,
+    }),
+    [themeMode, resolvedTheme, setThemeMode, isLoading]
+  );
 
   return React.createElement(ThemeContext.Provider, { value: contextValue }, children);
 };

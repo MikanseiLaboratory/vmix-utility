@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Collapse,
-  Switch,
-  FormControlLabel,
-} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Switch from '@mui/material/Switch';
+import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -51,6 +50,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   uiDensity = 'standard' as UIDensity,
   initialExpandedLists = new Set(),
 }) => {
+  const { t } = useTranslation();
   const [expandedLists, setExpandedLists] = useState<Set<string>>(initialExpandedLists);
   const [showFullPaths, setShowFullPaths] = useState(false);
   
@@ -69,7 +69,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   };
 
   const getFileName = (filePath: string) => {
-    return filePath.split(/[\\\/]/).pop() || 'Unknown File';
+    return filePath.split(/[\\\/]/).pop() || t('common.unknownFile');
   };
 
   // Generate stable key based on data content
@@ -87,7 +87,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
   return (
     <Box>
       {/* Show full paths toggle */}
-      {showPathsToggle && (
+      {showPathsToggle ? (
         <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
           <FormControlLabel
             control={
@@ -99,17 +99,17 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                 checkedIcon={<VisibilityIcon fontSize="small" />}
               />
             }
-            label="Show full paths"
+            label={t('compactVideoList.showFullPaths')}
             labelPlacement="start"
             sx={{ ml: 0, mr: 0 }}
           />
         </Box>
-      )}
+      ) : null}
 
       {/* Video Lists */}
       {videoLists.length === 0 ? (
         <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-          No VideoList inputs found.
+          {t('compactVideoList.noInputs')}
         </Typography>
       ) : (
         <Box>
@@ -149,9 +149,9 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                     </Box>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'grey.300' }}>
-                        {videoList.items.length} items
+                        {t('compactVideoList.itemsCount', { count: videoList.items.length })}
                       </Typography>
-                      {onPopout && (
+                      {onPopout ? (
                         <IconButton
                           size="small"
                           onClick={(e) => {
@@ -162,7 +162,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                         >
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
-                      )}
+                      ) : null}
                       <IconButton size="small" sx={{ color: 'white', p: 0.25 }}>
                         {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                       </IconButton>
@@ -185,7 +185,7 @@ const CompactVideoListView: React.FC<CompactVideoListViewProps> = ({
                   >
                     {videoList.items.length === 0 ? (
                       <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                        No items in this video list
+                        {t('compactVideoList.noItems')}
                       </Typography>
                     ) : (
                       videoList.items.map((item, index) => {
