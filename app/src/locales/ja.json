@@ -264,6 +264,8 @@
     "supportBody": "お役に立ったら、Twitchのサブスクリプションで開発支援をご検討ください。",
     "supportTip": "<strong>💡 ご存知ですか？</strong> Amazon Primeをお持ちの場合、Prime Gamingから毎月無料でサブスクできます。Twitchのサブスクは自動更新されません。",
     "subscribeTwitch": "Twitchでサブスクする",
+    "joinDiscord": "Discordに参加",
+    "discordInviteSecondary": "コミュニティチャット・最新情報",
     "licenseTitle": "ライセンス",
     "licenseBody": "本プロジェクトはMITライセンスの下で提供されています。",
     "licenseFile": "LICENSEファイル",

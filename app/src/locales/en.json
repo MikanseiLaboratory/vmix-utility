@@ -264,6 +264,8 @@
     "supportBody": "If you find this project helpful, consider supporting its development via Twitch subscriptions.",
     "supportTip": "<strong>💡 Did you know?</strong> If you have Amazon Prime, you can subscribe for free each month via Prime Gaming! Twitch subscriptions don't auto-renew, so you can choose to support the project every month.",
     "subscribeTwitch": "Subscribe on Twitch",
+    "joinDiscord": "Join Discord",
+    "discordInviteSecondary": "Community chat and updates",
     "licenseTitle": "License",
     "licenseBody": "This project is licensed under the MIT License.",
     "licenseFile": "LICENSE file",
