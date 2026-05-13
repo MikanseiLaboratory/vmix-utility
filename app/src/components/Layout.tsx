@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type LazyExoticComponent, type ComponentType } from 'react';
+import { lazy, Suspense, useMemo, useState, type LazyExoticComponent, type ComponentType, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
@@ -37,7 +37,7 @@ const drawerWidth = 240;
 
 interface NavItem {
   text: string;
-  icon: JSX.Element;
+  icon: ReactElement;
   Page: LazyExoticComponent<ComponentType>;
 }
 

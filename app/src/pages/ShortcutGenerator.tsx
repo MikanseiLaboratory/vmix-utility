@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, memo, useRef, useEffect, type ComponentType } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
-import { FixedSizeList as List, type ListChildComponentProps } from 'react-window';
+import { FixedSizeList, type ListChildComponentProps, type FixedSizeListProps } from 'react-window';
 import ConnectionSelector from '../components/ConnectionSelector';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -80,6 +80,11 @@ type VirtualizedInputItemData = {
   spacing: ReturnType<typeof getDensitySpacing>;
   t: TFunction;
 };
+
+/** `react-window` class types vs React 18 JSX (refs) — align for TS */
+const VirtualizedInputList = FixedSizeList as unknown as ComponentType<
+  FixedSizeListProps<VirtualizedInputItemData>
+>;
 
 // Virtualized row component for react-window
 const VirtualizedInputItem = memo((props: ListChildComponentProps<VirtualizedInputItemData>) => {
@@ -1164,7 +1169,7 @@ const ShortcutGenerator = () => {
             ) : null}
             
             <Box ref={listContainerRef} sx={{ flex: 1, minHeight: 0 }}>
-              <List
+              <VirtualizedInputList
                 width={"100%"}
                 height={listHeight}
                 itemCount={filteredInputs.length}
@@ -1182,7 +1187,7 @@ const ShortcutGenerator = () => {
                 }), [filteredInputs, vmixInputs, selectedConnection, showToast, tryCommand, lastClickedInputId, handleInputClick, spacing, t])}
               >
                 {VirtualizedInputItem}
-              </List>
+              </VirtualizedInputList>
             </Box>
           </Paper>
         </>
