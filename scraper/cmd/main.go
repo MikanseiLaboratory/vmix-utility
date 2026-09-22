@@ -16,7 +16,7 @@ var (
 )
 
 func main() {
-	flag.IntVar(&helpVer, "helpver", 28, "vMix Help Version")
+	flag.IntVar(&helpVer, "helpver", 29, "vMix Help Version")
 	flag.StringVar(&dumpPath, "dumppath", "../app/src/assets", "Path to dump the shortcuts.json file")
 	flag.Parse()
 

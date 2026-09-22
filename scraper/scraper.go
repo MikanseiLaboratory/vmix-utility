@@ -87,7 +87,7 @@ func GetShortcuts(helpVer int) ([]Shortcut, error) {
 					}
 				}
 			})
-			if s.Name == "" {
+			if !includeShortcut(s.Name, s.Description) {
 				return
 			}
 			shortcuts = append(shortcuts, s)
@@ -105,4 +105,15 @@ func GetShortcuts(helpVer int) ([]Shortcut, error) {
 	}
 
 	return shortcuts, nil
+}
+
+// includeShortcut drops blank rows and the table header that the page repeats as a normal row.
+func includeShortcut(name, description string) bool {
+	if name == "" {
+		return false
+	}
+	if name == "Name" && description == "Description" {
+		return false
+	}
+	return true
 }
