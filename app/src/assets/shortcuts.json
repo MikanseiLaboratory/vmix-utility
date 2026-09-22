@@ -178,13 +178,6 @@
     ]
   },
   {
-    "Name": "Name",
-    "Description": "Description",
-    "Parameters": [
-      "Parameters"
-    ]
-  },
-  {
     "Name": "ActivatorRefresh",
     "Description": "Refresh all activator device lights and controls",
     "Parameters": null
