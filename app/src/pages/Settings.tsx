@@ -163,7 +163,7 @@ const Settings = () => {
         uiDensity: settings.uiDensity,
         locale: settings.locale === 'system' ? '' : settings.locale,
         httpServerEnabled: settings.httpServerEnabled,
-        httpServerPort: settings.httpServerPort,
+        httpServerPort: effectivePort,
         multiviewerEnabled: settings.multiviewerEnabled,
       });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -67,9 +67,6 @@ const VideoSeeker = () => {
   const [frameRate, setFrameRate] = useState(DEFAULT_FPS);
   const [pollInterval, setPollInterval] = useState(DEFAULT_POLL_MS);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const dragValueRef = useRef<number | null>(null);
-  dragValueRef.current = dragValue;
 
   const videos = runtime?.videos ?? [];
 

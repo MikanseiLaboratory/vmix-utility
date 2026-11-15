@@ -202,13 +202,37 @@ pub async fn start(
         runtime.last_error = None;
     }
 
-    // Give the previous listener a moment to release the port.
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // The previous listener is closed asynchronously; retry briefly so an
+    // enable/disable cycle or a port change does not fail spuriously.
+    let mut listener = None;
+    let mut last_error = None;
+    for attempt in 0..20 {
+        match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
+            Ok(bound) => {
+                listener = Some(bound);
+                break;
+            }
+            Err(error) => {
+                last_error = Some(error);
+                if attempt == 0 {
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                } else {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
+            }
+        }
+    }
 
-    let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
-        Ok(listener) => listener,
-        Err(error) => {
-            let message = format!("Failed to bind port {}: {}", port, error);
+    let listener = match listener {
+        Some(listener) => listener,
+        None => {
+            let message = format!(
+                "Failed to bind port {}: {}",
+                port,
+                last_error
+                    .map(|error| error.to_string())
+                    .unwrap_or_else(|| "unknown error".to_string())
+            );
             if let Ok(mut runtime) = slot.lock() {
                 runtime.last_error = Some(message.clone());
                 runtime.running = false;
