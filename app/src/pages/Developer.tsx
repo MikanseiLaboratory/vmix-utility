@@ -278,7 +278,7 @@ const Developer = () => {
                       onClick={() => openInBrowser('https://x.com/guleruun')}
                       sx={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      GuleruuN
+                      Guleruun
                     </Link>
                   }
                   secondary={t('developer.thanksGulerSecondary')}
