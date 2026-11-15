@@ -38,7 +38,11 @@ env_logger = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 once_cell = "1.19"
 urlencoding = "2.1"
-vmix-rs = { version = "=0.2.1", features = ["full"] }
+vmix-rs = { version = "=0.2.2", features = ["full"] }
+# vmix-http 0.2.2 is built against the 2026.1 canary API; later shiguredo_http11
+# releases changed the Response type and no longer compile. Drop this pin once
+# upstream vmix-http supports current shiguredo_http11.
+shiguredo_http11 = "=2026.1.0-canary.3"
 network-interface = { version = "2.0.3", features = ["serde"] }
 
 [profile.dev]

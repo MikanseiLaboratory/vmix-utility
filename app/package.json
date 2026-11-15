@@ -11,26 +11,26 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@babel/runtime": "^7.29.2",
+    "@babel/runtime": "^7.29.14",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^6.5.0",
     "@mui/material": "^6.5.0",
-    "@tauri-apps/api": "^2.11.0",
-    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "@types/react-window": "^1.8.8",
-    "i18next": "^26.1.0",
+    "i18next": "^26.7.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.7",
+    "react-i18next": "^17.1.13",
     "react-window": "^1.8.11"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.1",
-    "@types/react": "^18.3.28",
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "~5.8.3",
-    "vite": "^8.0.12"
+    "vite": "^8.3.8"
   }
 }
