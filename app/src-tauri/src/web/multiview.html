@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multiviewer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --program: #e53935;
+      --preview: #43a047;
+      --frame: #2a2f36;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
+    }
+    #stage {
+      position: fixed;
+      inset: 0;
+      background: #000;
+    }
+    .box {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      border: 2px solid var(--frame);
+      background: #05070a;
+      overflow: hidden;
+      transition: border-color 120ms ease;
+    }
+    .box.program {
+      border-color: var(--program);
+      border-width: 4px;
+    }
+    .box.preview {
+      border-color: var(--preview);
+    }
+    .box .title {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 0.35em 0.6em;
+      font-size: clamp(11px, 1.6vh, 22px);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .box .badge {
+      position: absolute;
+      top: 0.4em;
+      left: 0.6em;
+      padding: 0.15em 0.45em;
+      border-radius: 0.25em;
+      font-size: clamp(9px, 1.1vh, 16px);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--program);
+      display: none;
+    }
+    .box.program .badge {
+      display: block;
+    }
+    .box .meters {
+      position: absolute;
+      top: 0.5em;
+      right: 0.5em;
+      bottom: 0.5em;
+      display: flex;
+      gap: 0.2em;
+      align-items: flex-end;
+      opacity: 0.9;
+    }
+    .meter {
+      position: relative;
+      width: clamp(4px, 0.6vh, 10px);
+      height: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .meter .level {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0%;
+      background: linear-gradient(to top, #2e7d32 0%, #9ccc65 55%, #ffd54f 80%, #e53935 100%);
+      transition: height 60ms linear;
+    }
+    .meter.muted .level {
+      filter: grayscale(1);
+      opacity: 0.5;
+    }
+    #status {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      gap: 1em;
+      align-items: center;
+      padding: 0.4em 0.9em;
+      font-size: clamp(10px, 1.2vh, 16px);
+      font-variant-numeric: tabular-nums;
+      background: rgba(0, 0, 0, 0.6);
+      transition: opacity 200ms ease;
+      pointer-events: none;
+    }
+    #status.hidden {
+      opacity: 0;
+    }
+    #status .flag {
+      opacity: 0.35;
+    }
+    #status .flag.on {
+      opacity: 1;
+      color: #ff5252;
+    }
+    #status .spacer {
+      flex: 1;
+    }
+    #hint {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-content: center;
+      text-align: center;
+      font-size: clamp(13px, 2vh, 22px);
+      line-height: 1.6;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 2em;
+    }
+    #hint.visible {
+      display: grid;
+    }
+    #hint code {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 0.1em 0.35em;
+      border-radius: 0.25em;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div id="status">
+    <span id="endpoint">-</span>
+    <span id="clock">--:--:--</span>
+    <span class="spacer"></span>
+    <span class="flag" data-flag="recording">REC</span>
+    <span class="flag" data-flag="streaming">STREAM</span>
+    <span class="flag" data-flag="external">EXT</span>
+    <span class="flag" data-flag="playList">PLAYLIST</span>
+    <span class="flag" data-flag="multiCorder">MULTICORDER</span>
+    <span class="flag" data-flag="fullscreen">FULLSCREEN</span>
+    <span class="flag" data-flag="fadeToBlack">FTB</span>
+    <span id="version">-</span>
+  </div>
+
+  <div id="hint"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var params = new URLSearchParams(window.location.search);
+      var requestedHost = params.get('host') || '';
+      var requestedInput = params.get('input') || '';
+      var showMeters = params.get('meters') !== '0';
+      var showTitles = params.get('titles') !== '0';
+      var showStatus = params.get('status') !== '0';
+
+      var stage = document.getElementById('stage');
+      var statusBar = document.getElementById('status');
+      var hint = document.getElementById('hint');
+      var endpointLabel = document.getElementById('endpoint');
+      var clockLabel = document.getElementById('clock');
+      var versionLabel = document.getElementById('version');
+      var flagElements = Array.prototype.slice.call(document.querySelectorAll('#status .flag'));
+
+      var state = null;
+      var multiviewInput = null;
+      var socket = null;
+      var retryDelay = 1000;
+      var reconnectTimer = null;
+      var boxesByKey = {};
+
+      if (!showStatus) {
+        statusBar.classList.add('hidden');
+      }
+
+      function endpointUrl() {
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var query = requestedHost ? '?vMixHost=' + encodeURIComponent(requestedHost) : '';
+        return protocol + '//' + window.location.host + '/ws' + query;
+      }
+
+      function updateClock() {
+        var now = new Date();
+        clockLabel.textContent = now.toLocaleTimeString();
+      }
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // Keyboard shortcuts for operators: hide/show overlays, meters and status.
+      window.addEventListener('keydown', function (event) {
+        var key = event.key.toLowerCase();
+        if (key === 'm') {
+          showMeters = !showMeters;
+          render();
+        } else if (key === 't') {
+          showTitles = !showTitles;
+          render();
+        } else if (key === 'h') {
+          statusBar.classList.toggle('hidden');
+        }
+      });
+
+      function clearHint() {
+        hint.classList.remove('visible');
+        hint.innerHTML = '';
+      }
+
+      function showHint(html) {
+        hint.innerHTML = html;
+        hint.classList.add('visible');
+      }
+
+      function pickMultiviewInput(current) {
+        if (requestedInput) {
+          var wanted = Number(requestedInput);
+          return current.inputs.filter(function (input) {
+            return input.number === wanted;
+          })[0] || null;
+        }
+        return (
+          current.inputs.filter(function (input) {
+            return String(input.inputType).toLowerCase() === 'multiview';
+          })[0] || null
+        );
+      }
+
+      function inputByKey(key) {
+        if (!state) {
+          return null;
+        }
+        return (
+          state.inputs.filter(function (input) {
+            return input.key === key;
+          })[0] || null
+        );
+      }
+
+      function boxKey(overlay) {
+        return overlay.index + ':' + overlay.key;
+      }
+
+      function ensureBox(overlay) {
+        var key = boxKey(overlay);
+        var box = boxesByKey[key];
+        if (!box) {
+          box = document.createElement('div');
+          box.className = 'box';
+
+          var badge = document.createElement('div');
+          badge.className = 'badge';
+          badge.textContent = 'PGM';
+          box.appendChild(badge);
+
+          var title = document.createElement('div');
+          title.className = 'title';
+          box.appendChild(title);
+
+          var meters = document.createElement('div');
+          meters.className = 'meters';
+          var left = document.createElement('div');
+          left.className = 'meter';
+          left.appendChild(document.createElement('div')).className = 'level';
+          var right = document.createElement('div');
+          right.className = 'meter';
+          right.appendChild(document.createElement('div')).className = 'level';
+          meters.appendChild(left);
+          meters.appendChild(right);
+          box.appendChild(meters);
+
+          box.dataset.title = '';
+          box.dataset.meters = '';
+          boxesByKey[key] = box;
+          stage.appendChild(box);
+        }
+        return box;
+      }
+
+      function applyGeometry(box, position) {
+        // vMix stores overlay pan/zoom as -1..1 and 0..1 factors.
+        // A missing position means "full frame".
+        var zoomX = position ? position.zoomX : 1;
+        var zoomY = position ? position.zoomY : 1;
+        var panX = position ? position.panX : 0;
+        var panY = position ? position.panY : 0;
+
+        box.style.width = zoomX * 100 + '%';
+        box.style.height = zoomY * 100 + '%';
+        box.style.left = panX / 2 * 100 + 50 + '%';
+        box.style.top = (-panY / 2) * 100 + 50 + '%';
+      }
+
+      function setMeter(meterElement, value, muted) {
+        var level = meterElement.querySelector('.level');
+        var normalized = 0;
+        if (value > 0) {
+          var db = 20 * Math.log10(value);
+          normalized = Math.max(0, Math.min(1, (db + 60) / 60));
+        }
+        level.style.height = (normalized * 100).toFixed(1) + '%';
+        meterElement.classList.toggle('muted', !!muted);
+      }
+
+      function render() {
+        if (!state) {
+          return;
+        }
+
+        multiviewInput = pickMultiviewInput(state);
+        if (!multiviewInput) {
+          stage.innerHTML = '';
+          boxesByKey = {};
+          showHint(
+            requestedInput
+              ? 'Input ' + requestedInput + ' was not found.<br />Open <code>?input=N</code> with an existing input number.'
+              : 'No Multiview input found.<br />Add a Multiview input in vMix, or open <code>?input=N</code>.'
+          );
+          return;
+        }
+
+        var overlays = multiviewInput.overlays.filter(function (overlay) {
+          // Index 9 is the vMix "unused" placeholder slot.
+          return overlay.index !== 9;
+        });
+
+        if (!overlays.length) {
+          stage.innerHTML = '';
+          boxesByKey = {};
+          showHint('Multiview input <code>' + multiviewInput.title + '</code> has no layers.');
+          return;
+        }
+
+        clearHint();
+
+        var activeInput = state.inputs.filter(function (input) {
+          return input.number === state.active;
+        })[0];
+        var previewInput = state.inputs.filter(function (input) {
+          return input.number === state.preview;
+        })[0];
+        var programKey = activeInput ? activeInput.key : null;
+        var previewKey = previewInput ? previewInput.key : null;
+
+        var seen = {};
+        overlays.forEach(function (overlay) {
+          var box = ensureBox(overlay);
+          seen[boxKey(overlay)] = true;
+          applyGeometry(box, overlay.position);
+
+          var input = inputByKey(overlay.key);
+          var title = box.querySelector('.title');
+          var titleText = input ? input.title : '';
+          if (title.dataset.text !== titleText) {
+            title.textContent = titleText;
+            title.dataset.text = titleText;
+          }
+          title.style.display = showTitles ? 'block' : 'none';
+
+          box.classList.toggle('program', overlay.key === programKey);
+          box.classList.toggle('preview', overlay.key === previewKey && overlay.key !== programKey);
+
+          var meters = box.querySelector('.meters');
+          meters.style.display = showMeters && input && (input.meterF1 > 0 || input.meterF2 > 0) ? 'flex' : 'none';
+          if (input && showMeters) {
+            var meterElements = meters.querySelectorAll('.meter');
+            setMeter(meterElements[0], input.meterF1, input.muted);
+            setMeter(meterElements[1], input.meterF2, input.muted);
+          }
+
+          // Keep DOM order stable so overlapping layers stack predictably.
+          if (box.dataset.order !== String(overlay.index)) {
+            box.dataset.order = String(overlay.index);
+            box.style.zIndex = String(overlay.index);
+          }
+        });
+
+        Object.keys(boxesByKey).forEach(function (key) {
+          if (!seen[key]) {
+            boxesByKey[key].remove();
+            delete boxesByKey[key];
+          }
+        });
+
+        flagElements.forEach(function (element) {
+          var flag = element.dataset.flag;
+          element.classList.toggle('on', Boolean(state.status && state.status[flag]));
+        });
+        versionLabel.textContent = state.version ? 'v' + state.version : '';
+      }
+
+      function connect() {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
+
+        var url = endpointUrl();
+        endpointLabel.textContent = requestedHost ? requestedHost : '(default connection)';
+        socket = new WebSocket(url);
+
+        socket.addEventListener('open', function () {
+          retryDelay = 1000;
+          showHint('Connected. Waiting for vMix state…');
+        });
+
+        socket.addEventListener('message', function (event) {
+          var payload;
+          try {
+            payload = JSON.parse(event.data);
+          } catch (error) {
+            return;
+          }
+          if (!payload || payload.type !== 'vmix-state') {
+            return;
+          }
+          state = payload.state;
+          if (!state.inputs) {
+            state.inputs = [];
+          }
+          render();
+        });
+
+        socket.addEventListener('close', function () {
+          socket = null;
+          showHint('Disconnected from vmix-utility.<br />Reconnecting…');
+          scheduleReconnect();
+        });
+
+        socket.addEventListener('error', function () {
+          if (socket) {
+            socket.close();
+          }
+        });
+      }
+
+      function scheduleReconnect() {
+        if (reconnectTimer) {
+          return;
+        }
+        reconnectTimer = setTimeout(function () {
+          reconnectTimer = null;
+          connect();
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 10000);
+      }
+
+      connect();
+    })();
+  </script>
+</body>
+</html>

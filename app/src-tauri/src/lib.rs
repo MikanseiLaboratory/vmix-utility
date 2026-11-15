@@ -45,6 +45,7 @@ pub mod http_client;
 pub mod state;
 pub mod commands;
 pub mod network_scanner;
+pub mod web_server;
 
 // Re-export commonly used types
 pub use state::AppState;
@@ -155,15 +156,35 @@ pub fn run() {
                 .build(app)?;
             
             // Initialize app state and load config synchronously
+            let app_handle_init = app_handle.clone();
             tauri::async_runtime::block_on(async move {
-                let app_state = app_handle.state::<AppState>();
+                let app_state = app_handle_init.state::<AppState>();
                 
                 // Initialize configuration and wait for completion
-                if let Err(e) = app_state.initialize(&app_handle).await {
+                if let Err(e) = app_state.initialize(&app_handle_init).await {
                     println!("Failed to initialize app state: {}", e);
                 }
             });
             
+            // Start the HTTP/WebSocket server when it is enabled in the settings
+            {
+                let state = app_handle.state::<AppState>();
+                let settings = state.app_settings.lock().unwrap().clone();
+                if settings.http_server_enabled {
+                    let slot = std::sync::Arc::clone(&state.web_server);
+                    let connections = std::sync::Arc::clone(&state.http_connections);
+                    let auto_refresh = std::sync::Arc::clone(&state.auto_refresh_configs);
+                    let port = settings.http_server_port;
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) =
+                            web_server::start(&slot, connections, auto_refresh, port).await
+                        {
+                            app_log!(error, "Failed to start HTTP server: {}", e);
+                        }
+                    });
+                }
+            }
+
             // Start auto-refresh background task after initialization
             tauri::async_runtime::spawn(async move {
                 let app_state = app_handle_clone.state::<AppState>();
@@ -209,7 +230,10 @@ pub fn run() {
             get_network_interfaces_command,
             scan_network_for_vmix_command,
             should_show_donation_prompt,
-            dismiss_donation_prompt
+            dismiss_donation_prompt,
+            get_http_server_state,
+            get_logs,
+            get_vmix_runtime_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -32,6 +32,7 @@ pub struct AppState {
     pub video_list_windows: Arc<Mutex<HashMap<String, VideoListWindow>>>,
     pub donation_prompt: Arc<Mutex<DonationPromptConfig>>,
     pub update_status: Arc<Mutex<CachedUpdateStatus>>,
+    pub web_server: crate::web_server::WebServerSlot,
 }
 
 impl AppState {
@@ -47,6 +48,7 @@ impl AppState {
             video_list_windows: Arc::new(Mutex::new(HashMap::new())),
             donation_prompt: Arc::new(Mutex::new(DonationPromptConfig::default())),
             update_status: Arc::new(Mutex::new(CachedUpdateStatus::default())),
+            web_server: Arc::new(Mutex::new(crate::web_server::WebServerRuntime::default())),
         }
     }
     
