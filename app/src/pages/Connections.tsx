@@ -781,7 +781,7 @@ const Connections: React.FC = () => {
                             value={config.duration}
                             onChange={async (e) => {
                               const inputValue = Number(e.target.value);
-                              if (inputValue >= 100 && inputValue <= 10000) {
+                              if (inputValue >= 50 && inputValue <= 10000) {
                                 await setAutoRefreshConfig(connection.host, {
                                   ...config,
                                   enabled: true,
@@ -791,11 +791,11 @@ const Connections: React.FC = () => {
                             }}
                             onBlur={async (e) => {
                               const inputValue = Number(e.target.value);
-                              if (inputValue < 100) {
+                              if (inputValue < 50) {
                                 await setAutoRefreshConfig(connection.host, {
                                   ...config,
                                   enabled: true,
-                                  duration: 100
+                                  duration: 50
                                 });
                               } else if (inputValue > 10000) {
                                 await setAutoRefreshConfig(connection.host, {
@@ -806,9 +806,9 @@ const Connections: React.FC = () => {
                               }
                             }}
                             inputProps={{
-                              min: 100,
+                              min: 50,
                               max: 10000,
-                              step: 100,
+                              step: 50,
                               style: { 
                                 fontSize: '0.8125rem', 
                                 padding: '6px 8px',

@@ -6,6 +6,23 @@ export interface AppSettings {
   theme: string;
   ui_density: string;
   locale?: string;
+  http_server_enabled: boolean;
+  http_server_port: number;
+  multiviewer_enabled: boolean;
+}
+
+export interface HttpServerStatus {
+  running: boolean;
+  port: number;
+  urls: string[];
+  last_error: string | null;
+}
+
+export interface LogLine {
+  timestamp: string;
+  level: string;
+  source: 'app' | 'server' | string;
+  message: string;
 }
 
 export interface LoggingConfig {
@@ -59,6 +76,9 @@ export const settingsService = {
     theme: string;
     uiDensity: string;
     locale: string;
+    httpServerEnabled: boolean;
+    httpServerPort: number;
+    multiviewerEnabled: boolean;
   }): Promise<void> {
     try {
       await invoke('save_app_settings', {
@@ -68,6 +88,9 @@ export const settingsService = {
           theme: settings.theme,
           ui_density: settings.uiDensity,
           locale: settings.locale,
+          http_server_enabled: settings.httpServerEnabled,
+          http_server_port: settings.httpServerPort,
+          multiviewer_enabled: settings.multiviewerEnabled,
         }
       });
     } catch (error) {
@@ -120,6 +143,20 @@ export const settingsService = {
    */
   async getUpdateInfo(): Promise<CachedUpdateStatus> {
     return await invoke<CachedUpdateStatus>('get_update_info');
+  },
+
+  /**
+   * Runtime status of the built-in HTTP/WebSocket server
+   */
+  async getHttpServerState(): Promise<HttpServerStatus> {
+    return await invoke<HttpServerStatus>('get_http_server_state');
+  },
+
+  /**
+   * In-memory application / server log lines
+   */
+  async getLogs(source?: 'app' | 'server', limit?: number): Promise<LogLine[]> {
+    return await invoke<LogLine[]>('get_logs', { source: source ?? null, limit: limit ?? null });
   },
 
   /**

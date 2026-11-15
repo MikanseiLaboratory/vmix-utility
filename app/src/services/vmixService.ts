@@ -49,6 +49,37 @@ export interface AutoRefreshConfig {
   duration: number;
 }
 
+export interface StatusFlags {
+  recording: boolean;
+  external: boolean;
+  streaming: boolean;
+  play_list: boolean;
+  multi_corder: boolean;
+  fullscreen: boolean;
+  fade_to_black: boolean;
+}
+
+export interface VideoTransportInfo {
+  key: string;
+  number: number;
+  title: string;
+  short_title: string;
+  input_type: string;
+  state: string;
+  position_ms: number;
+  duration_ms: number;
+  looping: boolean;
+  muted: boolean;
+}
+
+export interface VmixRuntimeState {
+  host: string;
+  active: number;
+  preview: number;
+  status: StatusFlags;
+  videos: VideoTransportInfo[];
+}
+
 /**
  * Centralized vMix service for all Tauri backend communication.
  * 
@@ -87,6 +118,11 @@ export const vmixService = {
 
   async selectVideoListItem(host: string, inputNumber: number, itemIndex: number): Promise<void> {
     return invoke('select_video_list_item', { host, inputNumber, itemIndex });
+  },
+
+  // Live transport state (Video Seeker)
+  async getVmixRuntimeState(host: string): Promise<VmixRuntimeState> {
+    return invoke<VmixRuntimeState>('get_vmix_runtime_state', { host });
   },
 
   // Window management
