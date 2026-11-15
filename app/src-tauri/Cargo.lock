@@ -112,7 +112,6 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
- "shiguredo_http11",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -3121,7 +3120,7 @@ checksum = "327a4cb2ad49dc48adfdc9da89e22c64d488b508c67a044d71ba729e4521a285"
 dependencies = [
  "base64 0.23.1",
  "indexmap 2.14.2",
- "quick-xml 0.42.0",
+ "quick-xml",
  "serde",
  "time",
 ]
@@ -3262,21 +3261,12 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f24d770aeca0eacb81ac29dfbc55ebcc09312fdd1f8bbecdc7e4a84e000e3b4"
-dependencies = [
- "memchr",
- "serde",
-]
-
-[[package]]
-name = "quick-xml"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -3994,9 +3984,9 @@ dependencies = [
 
 [[package]]
 name = "shiguredo_http11"
-version = "2026.1.0-canary.3"
+version = "2026.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c65267a074e2e6bf86f0378d7b4948919317d36813ea727304f1761379d716b"
+checksum = "521929c2893005420ccee04aada685000c967cbcae36cd46117b40bf5495e5ab"
 
 [[package]]
 name = "shlex"
@@ -5257,19 +5247,19 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vmix-core"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57572398248540fe65f2a091d9e0e988b78e04a6aa832eedbb112fd7b85c61b5"
+checksum = "54d29f27aa625a6c0fe23fe7511fbcf682a801d7a5be2023fbcb628a82e4bdb5"
 dependencies = [
- "quick-xml 0.34.0",
+ "quick-xml",
  "serde",
 ]
 
 [[package]]
 name = "vmix-http"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6982d6754db7acba8831f3459fe009e7a780c2aae8c5f0ae995898deb35caed4"
+checksum = "26863a194155904007ecf30cba5e3e59b6cb56fa33a5088a908455b2a5564a42"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5282,20 +5272,31 @@ dependencies = [
 
 [[package]]
 name = "vmix-rs"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bebb11729fad7d60f23d132a0b80275a9b52b6f59c3e767d565fab8bd04107a7"
+checksum = "c59b4263c16aac6abd63813bd2fdfb558177e488b819047261c5a647cfe264fc"
 dependencies = [
  "vmix-core",
  "vmix-http",
+ "vmix-shortcuts",
  "vmix-tcp",
 ]
 
 [[package]]
-name = "vmix-tcp"
-version = "0.2.2"
+name = "vmix-shortcuts"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be036931eabe4b3443f0d8d91bc01fb3a4342c3a3676cf43cbae1dc08eafd8ba"
+checksum = "c64e23bbb258046fd7c97d1a11b2929b58dbaf8faa085149b6b3ba6eecf15ed3"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "vmix-tcp"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05800e9982937ea01dd280ef93daeb2b865b0067ed8c77b03961d1854351ad29"
 dependencies = [
  "anyhow",
  "vmix-core",
