@@ -253,6 +253,10 @@ fn default_http_server_port() -> u16 {
     8089
 }
 
+fn default_http_server_bind() -> String {
+    "0.0.0.0".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub default_vmix_ip: String,
@@ -267,6 +271,9 @@ pub struct AppSettings {
     pub http_server_enabled: bool,
     #[serde(default = "default_http_server_port")]
     pub http_server_port: u16,
+    /// IPv4 to bind. `0.0.0.0` listens on every NIC.
+    #[serde(default = "default_http_server_bind")]
+    pub http_server_bind: String,
     /// Expose the Multiviewer page; requires the HTTP server to be enabled.
     #[serde(default)]
     pub multiviewer_enabled: bool,
@@ -282,6 +289,7 @@ impl Default for AppSettings {
             locale: default_locale(),
             http_server_enabled: false,
             http_server_port: default_http_server_port(),
+            http_server_bind: default_http_server_bind(),
             multiviewer_enabled: false,
         }
     }
@@ -421,6 +429,9 @@ pub struct VmixRuntimeState {
 pub struct HttpServerStatus {
     pub running: bool,
     pub port: u16,
+    /// Address the listener is bound to (`0.0.0.0` = every NIC).
+    #[serde(default)]
+    pub bind: String,
     /// Base URLs clients can use (loopback first, then LAN addresses).
     pub urls: Vec<String>,
     pub last_error: Option<String>,

@@ -73,11 +73,16 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
     try {
       setLoading(true);
       const statuses = await vmixService.getVMixStatuses();
-      setConnections(statuses);
+      setConnections(
+        statuses.filter((connection) => !optimisticallyRemovedHostsRef.current.has(connection.host)),
+      );
       
       // Fetch inputs and video lists for all connected hosts asynchronously
       // Don't wait for these to complete - let them run in background
       for (const connection of statuses) {
+        if (optimisticallyRemovedHostsRef.current.has(connection.host)) {
+          continue;
+        }
         if (connection.status === 'Connected') {
           // Fire and forget - don't await
           fetchInputsForHost(connection.host);
@@ -115,16 +120,14 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
       setConnections(prev => {
         const existingIndex = prev.findIndex(conn => conn.host === updatedConnection.host);
         if (existingIndex >= 0) {
-          // Update existing connection
           const updated = [...prev];
           updated[existingIndex] = updatedConnection;
           console.log(`Updated connection status for ${updatedConnection.host}: ${updatedConnection.status}`);
           return updated;
-        } else {
-          // Add new connection if it doesn't exist
-          console.log(`Added new connection for ${updatedConnection.host}: ${updatedConnection.status}`);
-          return [...prev, updatedConnection];
         }
+        // Do not resurrect a connection the user just removed.
+        console.log(`Ignoring status update for unknown host: ${updatedConnection.host}`);
+        return prev;
       });
 
       // If connection is established, fetch inputs
@@ -273,6 +276,10 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
   const connectVMix = useCallback(async (host: string, port?: number): Promise<VmixConnection> => {
     try {
       console.log('Connecting to vMix:', host, port);
+      const remaining = new Set(optimisticallyRemovedHostsRef.current);
+      remaining.delete(host);
+      optimisticallyRemovedHostsRef.current = remaining;
+      setOptimisticallyRemovedHosts(remaining);
       const connection = await vmixService.connectVMix(host, port);
       setConnections(prev => {
         const existingIndex = prev.findIndex(conn => conn.host === host);
@@ -300,8 +307,12 @@ export const VMixStatusProvider = ({ children }: { children: React.ReactNode }) 
     try {
       console.log(`Disconnecting from vMix host: ${host}`);
       
-      // Add to optimistically removed list to ignore status updates temporarily
-      setOptimisticallyRemovedHosts(prev => new Set([...prev, host]));
+      // Add to optimistically removed list immediately so in-flight status
+      // polls and events cannot resurrect the row before React re-renders.
+      const removed = new Set(optimisticallyRemovedHostsRef.current);
+      removed.add(host);
+      optimisticallyRemovedHostsRef.current = removed;
+      setOptimisticallyRemovedHosts(removed);
       
       // Optimistically remove from UI immediately for better UX
       setConnections(prev => {

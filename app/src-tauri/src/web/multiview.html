@@ -18,7 +18,7 @@
     body {
       margin: 0;
       height: 100%;
-      background: #000;
+      background: transparent;
       overflow: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       color: #fff;
@@ -26,13 +26,13 @@
     #stage {
       position: fixed;
       inset: 0;
-      background: #000;
+      background: transparent;
     }
     .box {
       position: absolute;
       transform: translate(-50%, -50%);
       border: 2px solid var(--frame);
-      background: #05070a;
+      background: transparent;
       overflow: hidden;
       transition: border-color 120ms ease;
     }
@@ -242,14 +242,16 @@
 
       function pickMultiviewInput(current) {
         if (requestedInput) {
-          var wanted = Number(requestedInput);
+          var wanted = String(requestedInput).trim().toLowerCase();
           return current.inputs.filter(function (input) {
-            return input.number === wanted;
+            return String(input.key).toLowerCase() === wanted
+              || String(input.number) === wanted;
           })[0] || null;
         }
         return (
           current.inputs.filter(function (input) {
-            return String(input.inputType).toLowerCase() === 'multiview';
+            var type = String(input.inputType).toLowerCase();
+            return type === 'multiview' || type === 'mix';
           })[0] || null
         );
       }
@@ -341,8 +343,8 @@
           boxesByKey = {};
           showHint(
             requestedInput
-              ? 'Input ' + requestedInput + ' was not found.<br />Open <code>?input=N</code> with an existing input number.'
-              : 'No Multiview input found.<br />Add a Multiview input in vMix, or open <code>?input=N</code>.'
+              ? 'Input ' + requestedInput + ' was not found.<br />Open <code>?input=</code> with an input number or GUID.'
+              : 'No Mix / Multiview input found.<br />Add one in vMix, or open <code>?input=</code> with a number or GUID.'
           );
           return;
         }
@@ -361,11 +363,24 @@
 
         clearHint();
 
+        // A Mix input shows its own mix bus tally, not the main program.
+        var bus = null;
+        var mixMatch = String(multiviewInput.title || '').match(/^mix\s*(\d+)$/i);
+        if (mixMatch) {
+          var wanted = Number(mixMatch[1]);
+          bus = (state.mixes || []).filter(function (mix) {
+            return mix.number === wanted;
+          })[0] || null;
+        }
+
+        var busActive = bus ? bus.active : state.active;
+        var busPreview = bus ? bus.preview : state.preview;
+
         var activeInput = state.inputs.filter(function (input) {
-          return input.number === state.active;
+          return input.number === busActive;
         })[0];
         var previewInput = state.inputs.filter(function (input) {
-          return input.number === state.preview;
+          return input.number === busPreview;
         })[0];
         var programKey = activeInput ? activeInput.key : null;
         var previewKey = previewInput ? previewInput.key : null;

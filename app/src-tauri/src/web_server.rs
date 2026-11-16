@@ -27,6 +27,10 @@ use tokio::sync::{broadcast, watch};
 
 const DEFAULT_POLL_INTERVAL_MS: u64 = 200;
 const MIN_POLL_INTERVAL_MS: u64 = 50;
+/// The browser pages are watched live, so they never poll slower than this.
+const MAX_PAGE_POLL_INTERVAL_MS: u64 = 100;
+/// While no WebSocket client is connected, back off to reduce vMix load.
+const IDLE_POLL_INTERVAL_MS: u64 = 1000;
 const BROADCAST_CAPACITY: usize = 64;
 const MIN_PORT: u16 = 1024;
 
@@ -35,6 +39,7 @@ const MIN_PORT: u16 = 1024;
 pub struct WebServerRuntime {
     running: bool,
     port: u16,
+    bind: String,
     urls: Vec<String>,
     last_error: Option<String>,
     shutdown: Option<watch::Sender<bool>>,
@@ -45,6 +50,7 @@ impl WebServerRuntime {
         HttpServerStatus {
             running: self.running,
             port: self.port,
+            bind: self.bind.clone(),
             urls: self.urls.clone(),
             last_error: self.last_error.clone(),
         }
@@ -69,6 +75,7 @@ struct ServerContext {
     latest: Arc<Mutex<HashMap<String, Arc<String>>>>,
     tx: broadcast::Sender<Snapshot>,
     shutdown: watch::Receiver<bool>,
+    cache: Arc<crate::vmix_cache::VmixStateCache>,
 }
 
 impl ServerContext {
@@ -104,8 +111,18 @@ struct SnapshotState {
     preset: Option<String>,
     active: i32,
     preview: i32,
+    /// Mix outputs (Mix 2 and above). Index 0 of the vMix array is the main mix.
+    mixes: Vec<SnapshotMix>,
     status: SnapshotFlags,
     inputs: Vec<SnapshotInput>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SnapshotMix {
+    number: i32,
+    active: i32,
+    preview: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -177,13 +194,17 @@ struct SnapshotPosition {
 // Public lifecycle API
 // ---------------------------------------------------------------------------
 
-/// Start (or restart) the server on `port`.
+/// Start (or restart) the server on `port` bound to `bind` (`0.0.0.0` = every NIC).
 pub async fn start(
     slot: &WebServerSlot,
     connections: Arc<Mutex<Vec<VmixClientWrapper>>>,
     auto_refresh: Arc<Mutex<HashMap<String, AutoRefreshConfig>>>,
+    cache: Arc<crate::vmix_cache::VmixStateCache>,
     port: u16,
+    bind: &str,
 ) -> Result<(), String> {
+    let bind = normalize_bind(bind)?;
+
     if !(MIN_PORT..=u16::MAX).contains(&port) {
         let message = format!(
             "Port {} is not usable: pick a port between {} and 65535",
@@ -199,6 +220,7 @@ pub async fn start(
         let mut runtime = slot.lock().map_err(|e| e.to_string())?;
         runtime.signal_shutdown();
         runtime.port = port;
+        runtime.bind = bind.clone();
         runtime.last_error = None;
     }
 
@@ -207,7 +229,7 @@ pub async fn start(
     let mut listener = None;
     let mut last_error = None;
     for attempt in 0..20 {
-        match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
+        match tokio::net::TcpListener::bind((bind.as_str(), port)).await {
             Ok(bound) => {
                 listener = Some(bound);
                 break;
@@ -252,6 +274,7 @@ pub async fn start(
         latest: Arc::new(Mutex::new(HashMap::new())),
         tx,
         shutdown: shutdown_rx.clone(),
+        cache: Arc::clone(&cache),
     };
 
     let app = Router::new()
@@ -275,11 +298,12 @@ pub async fn start(
 
     spawn_poller_supervisor(context);
 
-    let urls = build_urls(port);
+    let urls = build_urls(port, &bind);
     {
         let mut runtime = slot.lock().map_err(|e| e.to_string())?;
         runtime.running = true;
         runtime.port = port;
+        runtime.bind = bind.clone();
         runtime.urls = urls.clone();
         runtime.last_error = None;
         runtime.shutdown = Some(shutdown_tx);
@@ -287,7 +311,8 @@ pub async fn start(
 
     server_log!(
         info,
-        "HTTP server listening on port {} ({})",
+        "HTTP server listening on {}:{} ({})",
+        bind,
         port,
         urls.first().cloned().unwrap_or_default()
     );
@@ -310,12 +335,15 @@ pub async fn apply_settings(
     slot: &WebServerSlot,
     connections: Arc<Mutex<Vec<VmixClientWrapper>>>,
     auto_refresh: Arc<Mutex<HashMap<String, AutoRefreshConfig>>>,
+    cache: Arc<crate::vmix_cache::VmixStateCache>,
     enabled: bool,
     port: u16,
+    bind: &str,
 ) -> Result<(), String> {
-    let (running, current_port) = {
+    let bind = normalize_bind(bind)?;
+    let (running, current_port, current_bind) = {
         let runtime = slot.lock().map_err(|e| e.to_string())?;
-        (runtime.running, runtime.port)
+        (runtime.running, runtime.port, runtime.bind.clone())
     };
 
     if !enabled {
@@ -323,11 +351,11 @@ pub async fn apply_settings(
         return Ok(());
     }
 
-    if running && current_port == port {
+    if running && current_port == port && current_bind == bind {
         return Ok(());
     }
 
-    start(slot, connections, auto_refresh, port).await
+    start(slot, connections, auto_refresh, cache, port, &bind).await
 }
 
 // ---------------------------------------------------------------------------
@@ -495,17 +523,24 @@ async fn poll_host(context: ServerContext, host: String) {
             return;
         };
 
+        // Nobody is watching: idle at a low rate so vMix is not polled
+        // pointlessly while no browser page is open.
+        if context.tx.receiver_count() == 0 {
+            tokio::time::sleep(Duration::from_millis(IDLE_POLL_INTERVAL_MS)).await;
+            continue;
+        }
+
         let interval = {
             let configs = context.auto_refresh.lock().unwrap();
             configs
                 .get(&host)
                 .map(|config| config.duration.max(MIN_POLL_INTERVAL_MS))
                 .unwrap_or(DEFAULT_POLL_INTERVAL_MS)
+                .min(MAX_PAGE_POLL_INTERVAL_MS)
         };
 
-        match client.get_raw_vmix_state().await {
-            Ok(state) => {
-                let snapshot = build_snapshot(&host, &state);
+        match context.cache.refresh(&client).await {
+            Ok(state) => {                let snapshot = build_snapshot(&host, &state);
                 match serde_json::to_string(&snapshot) {
                     Ok(json) => {
                         let json = Arc::new(json);
@@ -543,7 +578,23 @@ async fn poll_host(context: ServerContext, host: String) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn build_urls(port: u16) -> Vec<String> {
+fn normalize_bind(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok("0.0.0.0".to_string());
+    }
+    trimmed
+        .parse::<std::net::Ipv4Addr>()
+        .map(|ip| ip.to_string())
+        .map_err(|_| format!("Invalid bind address: {trimmed}"))
+}
+
+fn build_urls(port: u16, bind: &str) -> Vec<String> {
+    let bind = bind.trim();
+    if !bind.is_empty() && bind != "0.0.0.0" {
+        return vec![format!("http://{}:{}", bind, port)];
+    }
+
     let mut urls = vec![format!("http://127.0.0.1:{}", port)];
 
     if let Ok(interfaces) = get_network_interfaces() {
@@ -583,6 +634,15 @@ fn build_snapshot_state(vmix: &vmix_rs::models::Vmix) -> SnapshotState {
         preset: vmix.preset.clone(),
         active: vmix.active.trim().parse().unwrap_or(0),
         preview: vmix.preview.trim().parse().unwrap_or(0),
+        mixes: vmix
+            .mix
+            .iter()
+            .map(|mix| SnapshotMix {
+                number: mix.number.trim().parse().unwrap_or(0),
+                active: mix.active.trim().parse().unwrap_or(0),
+                preview: mix.preview.trim().parse().unwrap_or(0),
+            })
+            .collect(),
         status: SnapshotFlags {
             recording: vmix.recording,
             external: vmix.external,
@@ -659,10 +719,23 @@ mod tests {
 
     #[test]
     fn urls_start_with_loopback() {
-        let urls = build_urls(8089);
+        let urls = build_urls(8089, "0.0.0.0");
         assert_eq!(urls.first().map(String::as_str), Some("http://127.0.0.1:8089"));
         assert!(urls.iter().all(|url| url.contains(":8089")));
         assert!(urls.iter().all(|url| !url.contains("127.0.0.1:8089") || url == "http://127.0.0.1:8089"));
+    }
+
+    #[test]
+    fn urls_for_specific_nic_are_only_that_address() {
+        let urls = build_urls(8089, "192.168.10.20");
+        assert_eq!(urls, vec!["http://192.168.10.20:8089".to_string()]);
+    }
+
+    #[test]
+    fn empty_bind_normalizes_to_all_nics() {
+        assert_eq!(normalize_bind("").unwrap(), "0.0.0.0");
+        assert_eq!(normalize_bind(" 127.0.0.1 ").unwrap(), "127.0.0.1");
+        assert!(normalize_bind("not-an-ip").is_err());
     }
 
     #[test]
@@ -673,6 +746,7 @@ mod tests {
             preset: None,
             active: 1,
             preview: 2,
+            mixes: Vec::new(),
             status: SnapshotFlags {
                 recording: true,
                 external: false,

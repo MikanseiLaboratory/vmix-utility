@@ -110,7 +110,7 @@ pub async fn send_vmix_function(
     app_log!(info, "Sending vMix function command: {} to host: {}", function_name, host);
     
     let http_connection = {
-        let http_connections = state.http_connections.lock().unwrap();
+        let http_connections = crate::state::lock_mutex(&state.http_connections);
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
@@ -154,24 +154,30 @@ pub async fn get_vmix_inputs(
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
-    let vmix_data = match http_vmix {
-        Some(vmix) => vmix.get_vmix_data().await.map_err(|e| e.to_string())?,
+    let vmix_state = match http_vmix {
+        Some(vmix) => {
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
+        }
         None => {
             // Try to establish new HTTP connection
             let port = port.unwrap_or(8088);
             let vmix = VmixClientWrapper::new(&host, port);
-            vmix.get_vmix_data().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         }
     };
     
-    let inputs: Vec<VmixInput> = vmix_data.inputs.input.iter().map(|input| {
+    let inputs: Vec<VmixInput> = vmix_state.inputs.input.iter().map(|input| {
         VmixInput {
             key: input.key.clone(),
-            number: input.number.parse().unwrap_or(0),
+            number: input.number.trim().parse().unwrap_or(0),
             title: input.title.clone(),
-            short_title: input.short_title.clone(),
-            input_type: input.input_type.clone().unwrap_or_else(|| "Unknown".to_string()),
-            state: input.state.clone().unwrap_or_else(|| "Unknown".to_string()),
+            short_title: Some(input.short_title.clone()),
+            input_type: input.input_type.clone(),
+            state: input_state_name(&input.state),
         }
     }).collect();
     
@@ -192,16 +198,20 @@ pub async fn get_vmix_video_lists(
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
-    // Get raw vmix-rs state and use shared builder function
+    // Get raw vmix-rs state (shared cache) and use shared builder function
     let vmix_state = match http_vmix {
         Some(vmix) => {
-            vmix.get_raw_vmix_state().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         },
         None => {
             // Try to establish new HTTP connection
             let port = port.unwrap_or(8088);
             let vmix = VmixClientWrapper::new(&host, port);
-            vmix.get_raw_vmix_state().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         }
     };
 
@@ -359,23 +369,32 @@ pub async fn disconnect_vmix(
     
     // Disconnect from HTTP connections
     {
-        let mut http_connections = state.http_connections.lock().unwrap();
+        let mut http_connections = state.http_connections.lock().unwrap_or_else(|e| e.into_inner());
         http_connections.retain(|c| c.host() != host);
     }
     
     // Clean up state
     {
-        let mut configs = state.auto_refresh_configs.lock().unwrap();
+        let mut configs = state.auto_refresh_configs.lock().unwrap_or_else(|e| e.into_inner());
         configs.remove(&host);
     }
     {
-        let mut cache = state.last_status_cache.lock().unwrap();
+        let mut cache = state.last_status_cache.lock().unwrap_or_else(|e| e.into_inner());
         cache.remove(&host);
     }
     {
-        let mut inputs_cache = state.inputs_cache.lock().unwrap();
+        let mut inputs_cache = state.inputs_cache.lock().unwrap_or_else(|e| e.into_inner());
         inputs_cache.remove(&host);
     }
+    {
+        let mut video_lists_cache = state.video_lists_cache.lock().unwrap_or_else(|e| e.into_inner());
+        video_lists_cache.remove(&host);
+    }
+    {
+        let mut labels = state.connection_labels.lock().unwrap_or_else(|e| e.into_inner());
+        labels.remove(&host);
+    }
+    state.vmix_cache.invalidate(&host);
     
     // Emit connection removal event to frontend
     let _ = app_handle.emit("vmix-connection-removed", serde_json::json!({"host": host}));
@@ -1297,8 +1316,10 @@ pub async fn apply_http_server_settings(
         &state.web_server,
         Arc::clone(&state.http_connections),
         Arc::clone(&state.auto_refresh_configs),
+        Arc::clone(&state.vmix_cache),
         settings.http_server_enabled,
         settings.http_server_port,
+        &settings.http_server_bind,
     )
     .await
 }
@@ -1327,7 +1348,7 @@ fn parse_time_ms(raw: &str) -> i64 {
         .unwrap_or(0)
 }
 
-fn input_state_name(state: &vmix_rs::models::State) -> String {
+pub fn input_state_name(state: &vmix_rs::models::State) -> String {
     match state {
         vmix_rs::models::State::Running => "Running".to_string(),
         vmix_rs::models::State::Paused => "Paused".to_string(),
@@ -1386,7 +1407,7 @@ pub async fn get_vmix_runtime_state(
     host: String,
 ) -> Result<VmixRuntimeState, String> {
     let client = {
-        let connections = state.http_connections.lock().unwrap();
+        let connections = crate::state::lock_mutex(&state.http_connections);
         connections
             .iter()
             .find(|connection| connection.host() == host)
@@ -1397,10 +1418,10 @@ pub async fn get_vmix_runtime_state(
         return Err(format!("No vMix connection is registered for {}", host));
     };
 
-    let vmix = client
-        .get_raw_vmix_state()
-        .await
-        .map_err(|e| e.to_string())?;
+    let vmix = state
+        .vmix_cache
+        .get(&client, crate::vmix_cache::CACHE_TTL)
+        .await?;
 
     Ok(build_runtime_state(&host, &vmix))
 }

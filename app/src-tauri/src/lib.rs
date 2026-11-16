@@ -46,6 +46,7 @@ pub mod state;
 pub mod commands;
 pub mod network_scanner;
 pub mod web_server;
+pub mod vmix_cache;
 
 // Re-export commonly used types
 pub use state::AppState;
@@ -174,10 +175,12 @@ pub fn run() {
                     let slot = std::sync::Arc::clone(&state.web_server);
                     let connections = std::sync::Arc::clone(&state.http_connections);
                     let auto_refresh = std::sync::Arc::clone(&state.auto_refresh_configs);
+                    let cache = std::sync::Arc::clone(&state.vmix_cache);
                     let port = settings.http_server_port;
+                    let bind = settings.http_server_bind.clone();
                     tauri::async_runtime::spawn(async move {
                         if let Err(e) =
-                            web_server::start(&slot, connections, auto_refresh, port).await
+                            web_server::start(&slot, connections, auto_refresh, cache, port, &bind).await
                         {
                             app_log!(error, "Failed to start HTTP server: {}", e);
                         }

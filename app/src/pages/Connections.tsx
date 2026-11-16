@@ -129,15 +129,6 @@ const Connections: React.FC = () => {
     }
   }, [vmixConnections, globalLoading, isInitialLoading]);
 
-  // Auto-refresh connections when component mounts
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      refreshConnections();
-    }, 100); // Further reduced for faster initial load
-    
-    return () => clearTimeout(timer);
-  }, [refreshConnections]);
-
   // Set a shorter timeout for initial loading
   useEffect(() => {
     const timeout = setTimeout(() => {
