@@ -138,3 +138,12 @@ jobs:
           prerelease: true
           includeUpdaterJson: true
           args: ${{ matrix.args }} 
+
+  announce-discord:
+    name: Announce release on Discord
+    needs: [publish-tauri-prerelease]
+    uses: ./.github/workflows/discord-notify.yml
+    with:
+      tag: "${{ github.event.inputs.tag || github.ref_name }}"
+    secrets:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

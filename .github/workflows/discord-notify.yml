@@ -1,0 +1,183 @@
+name: Discord Release Notify
+
+# GitHub Release の公開を Discord の webhook に通知します。
+#
+# 呼び出し方（推奨）: リリースを作成するジョブの後続ジョブとして workflow_call する。
+#
+#   announce-discord:
+#     needs: [<リリースを作成するジョブ>]
+#     uses: ./.github/workflows/discord-notify.yml
+#     with:
+#       tag: ${{ inputs.tag || github.ref_name }}
+#     secrets:
+#       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+#
+# 注意: GitHub は GITHUB_TOKEN が作成した release イベントでは他ワークフローを起動しない
+# （無限ループ防止の仕様）。そのため CI が GITHUB_TOKEN で Release を作る場合は
+# on.release に頼らず、上記のように同一ワークフロー内から呼び出すこと。
+# on.release は「人間が UI から Release を作成/公開した場合」を拾う保険として残している。
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "通知するリリースのタグ（例: v0.4.1）。空なら最新リリース。"
+        required: false
+        type: string
+      dry_run:
+        description: "ペイロードを表示するだけで投稿しない"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      DISCORD_WEBHOOK_URL:
+        description: "Discord の webhook URL"
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "通知するリリースのタグ（空なら最新リリース）"
+        required: false
+        type: string
+      dry_run:
+        description: "ペイロードを表示するだけで投稿しない"
+        required: false
+        type: boolean
+        default: true
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Post release to Discord
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Build webhook payload
+        id: payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          tag="${INPUT_TAG:-${EVENT_TAG:-}}"
+          if [ -z "$tag" ]; then
+            # releases/latest はプレリリースしか無いリポジトリでは 404 になるため、
+            # 一覧の先頭にフォールバックする。
+            tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null \
+                   || gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=1" --jq '.[0].tag_name' 2>/dev/null \
+                   || true)"
+          fi
+          if [ -z "$tag" ]; then
+            echo "::error::通知対象のタグを特定できませんでした。tag を明示してください。"
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+          repo_url="https://github.com/${GITHUB_REPOSITORY}"
+          repo_name="${GITHUB_REPOSITORY#*/}"
+
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" > release.json 2>/dev/null; then
+            if [ "$(jq -r '.draft // false' release.json)" = "true" ]; then
+              echo "::notice::Release ${tag} is still a draft; nothing to announce."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            release_url="$(jq -r '.html_url' release.json)"
+            release_name="$(jq -r '.name // .tag_name' release.json)"
+            release_body="$(jq -r '.body // ""' release.json)"
+            published_at="$(jq -r '.published_at // .created_at' release.json)"
+            is_prerelease="$(jq -r '.prerelease // false' release.json)"
+            author="$(jq -r '.author.login // ""' release.json)"
+            assets="$(jq -r '[.assets[]? | "・`\(.name)`  \(((.size / 1048576) * 10 | round) / 10) MB"] | if length > 10 then (.[:10] + ["・…他 \(length - 10) 件"]) else . end | join("\n") | gsub("\r"; "")' release.json)"
+          else
+            echo "::warning::Release ${tag} が見つかりません。タグ情報だけで通知します。"
+            release_url="${repo_url}/releases/tag/${tag}"
+            release_name="${tag}"
+            release_body=""
+            published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            is_prerelease="$(case "$tag" in *-*) echo true ;; *) echo false ;; esac)"
+            author=""
+            assets=""
+          fi
+
+          jq -n \
+            --arg repo_name "$repo_name" \
+            --arg repo_url "$repo_url" \
+            --arg tag "$tag" \
+            --arg title "$release_name" \
+            --arg url "$release_url" \
+            --arg body "$release_body" \
+            --arg published "$published_at" \
+            --arg assets "$assets" \
+            --arg author "$author" \
+            --argjson prerelease "$is_prerelease" \
+            '
+            def clip($n): if length > $n then (.[0:$n] + "\n…（以下省略）") else . end;
+            def clean: gsub("\r"; "") | gsub("\n{3,}"; "\n\n") | clip(1200);
+            def color: if $prerelease then 15105570 else 3066993 end;
+            def channel: if $prerelease then "🧪 Pre-release" else "🚀 Release" end;
+            def is_bot: ($author | endswith("[bot]"));
+            {
+              username: "Mikansei Laboratory",
+              allowed_mentions: { parse: [] },
+              embeds: [
+                ({
+                  author: {
+                    name: ($repo_name + "  " + (if $prerelease then "🧪" else "🚀" end)),
+                    url: $repo_url
+                  },
+                  title: $title,
+                  url: $url,
+                  description: (($body | clean) | if . == "" then "（リリースノートなし）" else . end),
+                  color: color,
+                  fields: (
+                    [
+                      { name: "リポジトリ", value: ("[`" + $repo_name + "`](" + $repo_url + ")"), inline: true },
+                      { name: "タグ", value: ("`" + $tag + "`"), inline: true },
+                      { name: "チャンネル", value: channel, inline: true }
+                    ]
+                    + (if $assets == "" then [] else [{ name: "成果物", value: $assets, inline: false }] end)
+                    + (if ($author == "" or is_bot) then [] else [{ name: "公開", value: ("@" + $author), inline: true }] end)
+                  ),
+                  footer: { text: "Mikansei Laboratory / GitHub Actions" },
+                  timestamp: $published
+                } | with_entries(select(.value != null)))
+              ]
+            }' > payload.json
+
+          # Discord の上限（description 4096 文字）に収まっているか確認
+          size="$(jq -r '.embeds[0].description | length' payload.json)"
+          echo "description length: ${size}"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Preview payload
+        if: inputs.dry_run
+        run: cat payload.json
+
+      - name: Post to Discord
+        if: ${{ !inputs.dry_run && steps.payload.outputs.skip != 'true' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "::error::シークレット DISCORD_WEBHOOK_URL が設定されていません。"
+            exit 1
+          fi
+          code="$(curl -sS -o response.json -w '%{http_code}' \
+            --retry 3 --retry-delay 3 --retry-connrefused \
+            -X POST "${DISCORD_WEBHOOK_URL}?wait=true" \
+            -H "Content-Type: application/json" \
+            --data-binary @payload.json)"
+          echo "HTTP ${code}"
+          cat response.json
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Discord webhook への投稿に失敗しました (HTTP ${code})"
+            exit 1
+          fi
