@@ -16,6 +16,30 @@ GitHub [Releases](https://github.com/MikanseiLaboratory/vmix-utility/releases)�
 - **macOS**: `.dmg` file (Intel and Apple Silicon)
 - **Linux**: `.AppImage` file
 
+### macOS で「“vmix-utility”は壊れているため開けません」と表示される場合
+
+古いリリース(v2.3.0以前)のmacOSビルドはappバンドル全体のコード署名が不完全な状態で配布されており、Apple SiliconのGatekeeperがダウンロード済みappを「壊れている」と判定してゴミ箱への移動を要求します。
+
+v2.3.1以降はバンドル全体がad-hoc署名されるため、この「壊れている」ダイアログは表示されなくなります。ただし Apple Developer Program での署名・公証( Developer ID + notarization )を行っていないため、macOSは初回起動時に「開発元を検証できません / Apple could not verify」と表示してブロックすることがあります。その場合は次のいずれかで起動できます:
+
+- **システム設定 → プライバシーとセキュリティ → "vmix-utility"はブロックされました → [このまま開く]** をクリック
+- または ターミナルで quarantine 属性を削除:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/vmix-utility.app
+  ```
+
+### Developer / macOSビルドのメンテナンス
+
+- ビルドは `tauri.conf.json` の `bundle.macOS.signingIdentity` が `"-"` (ad-hoc署名)のままでも `codesign -vv` を通る正しいバンドル署名が付きます。
+- Apple Developer Program ($99/年) に加入している場合は、配布可能な署名に移行できます:
+  1. `app/src-tauri/tauri.conf.json` の `bundle.macOS.signingIdentity` の `"-"` を `Developer ID Application: 会社名 (TEAMID)` に変更(または行を削除して `APPLE_CERTIFICATE` から自動解決)。
+  2. 3つのワークフロー(`release.yml`, `pre-release.yml`, `test-build.yml`)の tauri-action に次の secrets を設定:
+     - `APPLE_CERTIFICATE` (`.p12` を base64 化したもの) と `APPLE_CERTIFICATE_PASSWORD`
+     - `APPLE_ID` / `APPLE_PASSWORD` (app-specific password) / `APPLE_TEAM_ID`、または `APPLE_API_KEY` / `APPLE_API_ISSUER` (と `.p8` ファイル)
+  3. これで CI が codesign → notarize(staple 付き) まで自動的に行い、ダウンロードした app がそのまま起動可能になります。
+- 古いリリースを入手したユーザー向けの修復スクリプト: `scripts/macos-unquarantine.sh`
+
 ### Features / 機能
 
 - **Connections** - vMix接続を追加・管理するページします。

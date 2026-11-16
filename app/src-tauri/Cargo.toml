@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "2.2.8"
+version = "2.3.1"
 description = "app"
 authors = ["MikanseiLaboratory"]
 license-file = "../../LICENSE"

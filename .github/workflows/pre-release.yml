@@ -121,7 +121,11 @@ jobs:
             - **macOS (Apple Silicon)**: `.dmg` for `aarch64-apple-darwin`
             - **macOS (Intel)**: `.dmg` for `x86_64-apple-darwin`
             - **Linux**: `.AppImage` file
-            
+
+            ### macOS users
+            The macOS build is ad-hoc code signed but not notarized. If macOS blocks the first launch ("Apple could not verify..."), allow it via **System Settings → Privacy & Security → Open Anyway**, or run:
+            `xattr -dr com.apple.quarantine /Applications/vmix-utility.app`
+
             ### How to Help
             1. Download and test this pre-release
             2. Report any issues you encounter

@@ -84,6 +84,10 @@ jobs:
             - **macOS (Intel)**: `.dmg` for `x86_64-apple-darwin`
             - **Linux**: `.AppImage` file
 
+            ## macOS users
+            The macOS build is ad-hoc code signed but not notarized. If macOS blocks the first launch ("Apple could not verify..."), allow it via **System Settings → Privacy & Security → Open Anyway**, or run:
+            `xattr -dr com.apple.quarantine /Applications/vmix-utility.app`
+
             ## Auto-Update
             This release supports automatic updates. The app will check for updates on startup and you can manually check via the system tray menu.
 
