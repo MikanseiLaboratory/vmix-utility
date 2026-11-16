@@ -31,6 +31,7 @@ import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useToast, ToastSnackbar } from '../hooks/useToast';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { vmixService, type VideoTransportInfo, type VmixRuntimeState } from '../services/vmixService';
+import { seekMillis, seekRelative } from '../utils/seekValue';
 
 const POLL_INTERVALS = [100, 200, 500, 1000];
 const DEFAULT_POLL_MS = 200;
@@ -261,7 +262,7 @@ const VideoSeeker = () => {
         return;
       }
       seekInFlightRef.current = true;
-      await send('SetPosition', { Input: videoKey, Value: String(positionMs) });
+      await send('SetPosition', { Input: videoKey, Value: seekMillis(positionMs) });
       seekInFlightRef.current = false;
       if (pendingSeekRef.current !== null) {
         const pending = pendingSeekRef.current;
@@ -326,6 +327,7 @@ const VideoSeeker = () => {
   const playFor = useCallback(
     async (videoKey: string, ms: number, rate: number) => {
       const hold = Math.max(40, Math.round(ms / rate));
+      // SetRate takes fractional speeds (0.1-4); only SetPosition needs integers.
       await send('SetRate', { Input: videoKey, Value: String(rate) });
       await send('Play', { Input: videoKey });
       await new Promise((resolve) => setTimeout(resolve, hold));
@@ -350,7 +352,7 @@ const VideoSeeker = () => {
       const before = video.position_ms;
 
       if (frames > 0) {
-        patchVideo(videoKey, { position_ms: before + stepMs }, before);
+        patchVideo(videoKey, { position_ms: Math.round(before + stepMs) }, before);
         stateHoldRef.current = {
           key: videoKey,
           state: 'Paused',
@@ -361,11 +363,11 @@ const VideoSeeker = () => {
         // Backwards playback is not available, so the seek snaps to a keyframe.
         // If that lands further back than requested, stay put instead of
         // jumping a whole keyframe.
-        await send('SetPosition', { Input: videoKey, Value: String(Math.max(0, before - stepMs)) });
+        await send('SetPosition', { Input: videoKey, Value: seekMillis(before - stepMs) });
         await settle();
         const landed = await readPosition(videoKey);
         if (landed !== null && before - landed > stepMs + frameMs * 2) {
-          await send('SetPosition', { Input: videoKey, Value: String(before) });
+          await send('SetPosition', { Input: videoKey, Value: seekMillis(before) });
           await settle();
           patchVideo(videoKey, { position_ms: (await readPosition(videoKey)) ?? before });
           return;
@@ -416,7 +418,7 @@ const VideoSeeker = () => {
         : clamped;
 
       patchVideo(key, { position_ms: clamped }, before);
-      await send('SetPosition', { Input: key, Value: String(absolute) });
+      await send('SetPosition', { Input: key, Value: seekMillis(absolute) });
       await settle();
 
       let actual = await readPosition(key);
@@ -436,7 +438,7 @@ const VideoSeeker = () => {
         }
         const step = remaining + (forward ? 1 : -1);
         const sign = forward ? '+=' : '-=';
-        await send('SetPosition', { Input: key, Value: `${sign}${Math.abs(step)}` });
+        await send('SetPosition', { Input: key, Value: seekRelative(sign, step) });
         await settle();
         const next = await readPosition(key);
         if (next === null || next === actual) {
@@ -447,7 +449,7 @@ const VideoSeeker = () => {
 
       // A snap must never move the playhead further than the request.
       if (Math.abs(actual - before) > Math.abs(delta) + frameMs * 2) {
-        await send('SetPosition', { Input: key, Value: String(before) });
+        await send('SetPosition', { Input: key, Value: seekMillis(before) });
         await settle();
         actual = (await readPosition(key)) ?? before;
       }
@@ -550,9 +552,11 @@ const VideoSeeker = () => {
         return;
       }
       state.frames = frames;
-      state.target = Math.max(
-        0,
-        Math.min(video.duration_ms, state.basePos + frames * frameMs),
+      state.target = Math.round(
+        Math.max(
+          0,
+          Math.min(video.duration_ms, state.basePos + frames * frameMs),
+        ),
       );
 
       // Batch: show the new position at once, but send at most every
