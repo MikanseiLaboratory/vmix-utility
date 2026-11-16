@@ -12,6 +12,10 @@ use tokio::fs;
 use tokio::time::sleep;
 use tauri::{Emitter, Manager};
 
+pub fn lock_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 #[derive(Debug, Clone)]
 pub struct VideoListWindow {
     pub window_id: String,
@@ -32,6 +36,8 @@ pub struct AppState {
     pub video_list_windows: Arc<Mutex<HashMap<String, VideoListWindow>>>,
     pub donation_prompt: Arc<Mutex<DonationPromptConfig>>,
     pub update_status: Arc<Mutex<CachedUpdateStatus>>,
+    /// Single shared source of vMix XML state for every feature.
+    pub vmix_cache: Arc<crate::vmix_cache::VmixStateCache>,
     pub web_server: crate::web_server::WebServerSlot,
 }
 
@@ -48,6 +54,7 @@ impl AppState {
             video_list_windows: Arc::new(Mutex::new(HashMap::new())),
             donation_prompt: Arc::new(Mutex::new(DonationPromptConfig::default())),
             update_status: Arc::new(Mutex::new(CachedUpdateStatus::default())),
+            vmix_cache: Arc::new(crate::vmix_cache::VmixStateCache::new()),
             web_server: Arc::new(Mutex::new(crate::web_server::WebServerRuntime::default())),
         }
     }
@@ -95,9 +102,9 @@ impl AppState {
         println!("Saving config to: {:?}", config_path);
         
         let config = {
-            let http_connections = self.http_connections.lock().unwrap();
-            let labels = self.connection_labels.lock().unwrap();
-            let auto_configs = self.auto_refresh_configs.lock().unwrap();
+            let http_connections = lock_mutex(&self.http_connections);
+            let labels = lock_mutex(&self.connection_labels);
+            let auto_configs = lock_mutex(&self.auto_refresh_configs);
             
             println!("Current HTTP connections count: {}", http_connections.len());
             
@@ -120,9 +127,9 @@ impl AppState {
             
             AppConfig {
                 connections: all_connections,
-                app_settings: Some(self.app_settings.lock().unwrap().clone()),
+                app_settings: Some(lock_mutex(&self.app_settings).clone()),
                 logging_config: Some(crate::logging::LOGGING_CONFIG.lock().unwrap().clone()),
-                donation_prompt: Some(self.donation_prompt.lock().unwrap().clone()),
+                donation_prompt: Some(lock_mutex(&self.donation_prompt).clone()),
             }
         };
         
@@ -216,6 +223,7 @@ impl AppState {
         let inputs_cache = Arc::clone(&self.inputs_cache);
         let video_lists_cache = Arc::clone(&self.video_lists_cache);
         let labels = Arc::clone(&self.connection_labels);
+        let vmix_cache = Arc::clone(&self.vmix_cache);
 
         tokio::spawn(async move {
             let mut next_refresh_times: HashMap<String, Instant> = HashMap::new();
@@ -233,8 +241,7 @@ impl AppState {
                 };
 
                 // Create a set of HTTP connection hosts for filtering
-                let http_hosts: std::collections::HashSet<String> = current_connections
-                    .iter()
+                let http_hosts: std::collections::HashSet<String> = current_connections                    .iter()
                     .map(|vmix| vmix.host().to_string())
                     .collect();
 
@@ -261,34 +268,47 @@ impl AppState {
                         };
 
                         if should_refresh {
-                            // Try to get current status with retry logic
+                            // Probe quickly so a dead host cannot stall the other connections.
                             let mut retry_attempts = 0;
-                            let max_retries = 3;
-                            let mut connection_successful = false;
-                            let mut active_input = 0;
-                            let mut preview_input = 0;
+                            let max_retries = 2;
+                            let mut vmix_data_opt: Option<Arc<vmix_rs::models::Vmix>> = None;
 
-                            while retry_attempts < max_retries && !connection_successful {
+                            while retry_attempts < max_retries && vmix_data_opt.is_none() {
                                 if retry_attempts > 0 {
-                                    sleep(Duration::from_millis(500 * retry_attempts as u64)).await;
+                                    sleep(Duration::from_millis(200)).await;
                                 }
 
-                                match vmix.get_status().await {
-                                    Ok(status) if status => {
-                                        active_input = vmix.get_active_input().await.unwrap_or(0);
-                                        preview_input = vmix.get_preview_input().await.unwrap_or(0);
-                                        connection_successful = true;
+                                // One request covers connect, program/preview and inputs.
+                                match tokio::time::timeout(
+                                    Duration::from_millis(800),
+                                    vmix_cache.refresh(&vmix),
+                                )
+                                .await
+                                {
+                                    Ok(Ok(state)) => {
+                                        vmix_data_opt = Some(state);
                                         consecutive_failures.remove(&host);
                                     }
-                                    _ => {
-                                        // If connection failed and this is not the first attempt, try to reconnect
-                                        if retry_attempts > 0 && !vmix.get_status().await.unwrap_or(false) {
-                                            app_log!(debug, "Connection lost to {}, will retry", host);
-                                        }
+                                    Ok(Err(e)) => {
+                                        app_log!(debug, "Status check failed for {}: {}", host, e);
+                                        retry_attempts += 1;
+                                    }
+                                    Err(_) => {
+                                        app_log!(debug, "Status check timed out for {}", host);
                                         retry_attempts += 1;
                                     }
                                 }
                             }
+
+                            let connection_successful = vmix_data_opt.is_some();
+                            let active_input = vmix_data_opt
+                                .as_ref()
+                                .and_then(|state| state.active.trim().parse().ok())
+                                .unwrap_or(0);
+                            let preview_input = vmix_data_opt
+                                .as_ref()
+                                .and_then(|state| state.preview.trim().parse().ok())
+                                .unwrap_or(0);
 
                             let connection_status = if connection_successful { 
                                 "Connected".to_string() 
@@ -306,13 +326,6 @@ impl AppState {
                             let label = {
                                 let labels_guard = labels.lock().unwrap();
                                 labels_guard.get(&host).cloned().unwrap_or_else(|| host.clone())
-                            };
-
-                            // Get vMix data once if connected, then use it for both version/edition and inputs
-                            let vmix_data_opt = if connection_successful {
-                                vmix.get_vmix_data().await.ok()
-                            } else {
-                                None
                             };
 
                             // Preserve version/edition/preset from cache if they exist, otherwise get from vMix data
@@ -342,14 +355,14 @@ impl AppState {
                             };
 
                             // Get current inputs for comparison
-                            let current_inputs = if let Some(data) = vmix_data_opt {
-                                data.inputs.input.into_iter().map(|input| VmixInput {
-                                    key: input.key,
-                                    number: input.number.parse().unwrap_or(0),
-                                    title: input.title,
-                                    short_title: input.short_title,
-                                    input_type: input.input_type.unwrap_or_default(),
-                                    state: input.state.unwrap_or_default(),
+                            let current_inputs = if let Some(ref data) = vmix_data_opt {
+                                data.inputs.input.iter().map(|input| VmixInput {
+                                    key: input.key.clone(),
+                                    number: input.number.trim().parse().unwrap_or(0),
+                                    title: input.title.clone(),
+                                    short_title: Some(input.short_title.clone()),
+                                    input_type: input.input_type.clone(),
+                                    state: crate::commands::input_state_name(&input.state),
                                 }).collect::<Vec<_>>()
                             } else {
                                 Vec::new()
@@ -381,6 +394,14 @@ impl AppState {
                                 connection_changed || inputs_changed
                             };
 
+                            let still_present = {
+                                let guard = http_connections.lock().unwrap_or_else(|e| e.into_inner());
+                                guard.iter().any(|connection| connection.host() == host)
+                            };
+                            if !still_present {
+                                continue;
+                            }
+
                             // Always emit event for connection updates
                             if status_changed {
                                 let _ = app_handle.emit("vmix-status-updated", &new_connection);
@@ -388,70 +409,43 @@ impl AppState {
 
                             // Also check and emit VideoLists updates
                             if new_connection.status == "Connected" {
-                                let app_handle_clone = app_handle.clone();
-                                let host_clone = host.clone();
-                                let http_connections_clone = Arc::clone(&http_connections);
-                                let video_lists_cache_clone = Arc::clone(&video_lists_cache);
-                                
-                                tokio::spawn(async move {
-                                    // Get vMix HTTP client for this host
-                                    let vmix_client = {
-                                        let guard = http_connections_clone.lock().unwrap();
-                                        guard.iter().find(|c| c.host() == host_clone).cloned()
-                                    };
-                                    
-                                    if let Some(client) = vmix_client {
-                                        // Get raw vmix-rs state and use shared builder function
-                                        match client.get_raw_vmix_state().await {
-                                            Ok(vmix_state) => {
-                                                // Use shared builder function for consistent VideoList parsing
-                                                let video_lists = crate::commands::build_video_lists_from_vmix(&vmix_state);
-                                                
-                                                app_log!(debug, "Auto-refresh retrieved {} VideoLists for host: {}", video_lists.len(), host_clone);
-                                                
-                                                // Check if VideoLists data has changed using cache comparison
-                                                let video_lists_changed = {
-                                                    let mut cache_guard = video_lists_cache_clone.lock().unwrap();
-                                                    let has_changed = cache_guard.get(&host_clone)
-                                                        .map(|cached_video_lists| {
-                                                            let changed = cached_video_lists != &video_lists;
-                                                            app_log!(debug, "Auto-refresh VideoLists comparison for {}: cached={}, new={}, changed={}", 
-                                                                host_clone, cached_video_lists.len(), video_lists.len(), changed);
-                                                            changed
-                                                        })
-                                                        .unwrap_or_else(|| {
-                                                            app_log!(debug, "No cached VideoLists for {} in auto-refresh, treating as changed", host_clone);
-                                                            true
-                                                        });
-                                                    
-                                                    // Update cache with new data
-                                                    cache_guard.insert(host_clone.clone(), video_lists.clone());
-                                                    app_log!(debug, "Auto-refresh updated VideoLists cache for {} with {} items", host_clone, video_lists.len());
-                                                    has_changed
-                                                };
-                                                
-                                                // Only emit frontend event if data actually changed (for auto-refresh)
-                                                if video_lists_changed {
-                                                    let payload = serde_json::json!({
-                                                        "host": host_clone,
-                                                        "videoLists": video_lists
-                                                    });
-                                                    
-                                                    if let Err(e) = app_handle_clone.emit("vmix-videolists-updated", payload) {
-                                                        app_log!(error, "Failed to emit VideoLists update: {}", e);
-                                                    } else {
-                                                        app_log!(debug, "VideoLists auto-refresh completed for {} with {} lists (data changed)", host_clone, video_lists.len());
-                                                    }
-                                                } else {
-                                                    app_log!(debug, "VideoLists auto-refresh completed for {} - no changes detected", host_clone);
-                                                }
-                                            }
-                                            Err(e) => {
-                                                app_log!(error, "Failed to refresh VideoLists in auto-refresh for {}: {}", host_clone, e);
+                                if let Some(state_for_lists) = vmix_data_opt.clone() {
+                                    let app_handle_clone = app_handle.clone();
+                                    let host_clone = host.clone();
+                                    let video_lists_cache_clone = Arc::clone(&video_lists_cache);
+
+                                    tokio::spawn(async move {
+                                        // Reuse the state fetched above instead of
+                                        // issuing a second /api request.
+                                        let video_lists = crate::commands::build_video_lists_from_vmix(&state_for_lists);
+
+                                        app_log!(debug, "Auto-refresh retrieved {} VideoLists for host: {}", video_lists.len(), host_clone);
+
+                                        // Check if VideoLists data has changed using cache comparison
+                                        let video_lists_changed = {
+                                            let mut cache_guard = video_lists_cache_clone.lock().unwrap();
+                                            let has_changed = cache_guard.get(&host_clone)
+                                                .map(|cached_video_lists| cached_video_lists != &video_lists)
+                                                .unwrap_or(true);
+
+                                            // Update cache with new data
+                                            cache_guard.insert(host_clone.clone(), video_lists.clone());
+                                            has_changed
+                                        };
+
+                                        // Only emit frontend event if data actually changed (for auto-refresh)
+                                        if video_lists_changed {
+                                            let payload = serde_json::json!({
+                                                "host": host_clone,
+                                                "videoLists": video_lists
+                                            });
+
+                                            if let Err(e) = app_handle_clone.emit("vmix-videolists-updated", payload) {
+                                                app_log!(error, "Failed to emit VideoLists update: {}", e);
                                             }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                             }
 
                             // Schedule next refresh (shorter interval if reconnecting)

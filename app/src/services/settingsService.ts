@@ -8,12 +8,14 @@ export interface AppSettings {
   locale?: string;
   http_server_enabled: boolean;
   http_server_port: number;
+  http_server_bind: string;
   multiviewer_enabled: boolean;
 }
 
 export interface HttpServerStatus {
   running: boolean;
   port: number;
+  bind: string;
   urls: string[];
   last_error: string | null;
 }
@@ -78,6 +80,7 @@ export const settingsService = {
     locale: string;
     httpServerEnabled: boolean;
     httpServerPort: number;
+    httpServerBind: string;
     multiviewerEnabled: boolean;
   }): Promise<void> {
     try {
@@ -90,6 +93,7 @@ export const settingsService = {
           locale: settings.locale,
           http_server_enabled: settings.httpServerEnabled,
           http_server_port: settings.httpServerPort,
+          http_server_bind: settings.httpServerBind,
           multiviewer_enabled: settings.multiviewerEnabled,
         }
       });

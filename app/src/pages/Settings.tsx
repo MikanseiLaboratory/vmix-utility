@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useTranslation } from 'react-i18next';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { useUISettings } from '../hooks/useUISettings.tsx';
 import { settingsService, type CachedUpdateStatus, type HttpServerStatus, type UpdateInfo } from '../services/settingsService';
+import { NetworkScannerService, type NetworkInterface } from '../services/networkScannerService';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { applySavedLocale } from '../i18n/config';
@@ -20,6 +22,7 @@ import FormGroup from '@mui/material/FormGroup';
 import Grid2 from '@mui/material/Grid2';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
+import Link from '@mui/material/Link';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
@@ -28,6 +31,9 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+
+const ALL_NICS = '0.0.0.0';
+const LOOPBACK = '127.0.0.1';
 
 function applyCachedUpdateStatus(
   status: CachedUpdateStatus,
@@ -63,8 +69,10 @@ const Settings = () => {
     locale: 'system' as SettingsLocaleChoice,
     httpServerEnabled: false,
     httpServerPort: 8089,
+    httpServerBind: ALL_NICS,
     multiviewerEnabled: false,
   });
+  const [networkInterfaces, setNetworkInterfaces] = useState<NetworkInterface[]>([]);
 
   const [serverStatus, setServerStatus] = useState<HttpServerStatus | null>(null);
 
@@ -164,6 +172,7 @@ const Settings = () => {
         locale: settings.locale === 'system' ? '' : settings.locale,
         httpServerEnabled: settings.httpServerEnabled,
         httpServerPort: effectivePort,
+        httpServerBind: settings.httpServerBind || ALL_NICS,
         multiviewerEnabled: settings.multiviewerEnabled,
       });
 
@@ -213,6 +222,15 @@ const Settings = () => {
       }
 
       void refreshServerStatus();
+      void NetworkScannerService.getNetworkInterfaces()
+        .then((list) => {
+          if (!cancelled) {
+            setNetworkInterfaces(list);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to load network interfaces:', error);
+        });
 
       try {
         const [appSettings, loggingConfig, info] = await configPromise;
@@ -231,6 +249,7 @@ const Settings = () => {
               locale: parseStoredLocaleForSettings(appSettings.locale),
               httpServerEnabled: appSettings.http_server_enabled ?? false,
               httpServerPort: appSettings.http_server_port ?? 8089,
+              httpServerBind: appSettings.http_server_bind || ALL_NICS,
               multiviewerEnabled: appSettings.multiviewer_enabled ?? false,
             } : {}),
             ...(loggingConfig ? {
@@ -263,9 +282,15 @@ const Settings = () => {
   }, []);
 
   const effectivePort = Math.min(65535, Math.max(1024, Math.round(settings.httpServerPort || 8089)));
-  const multiviewBaseUrl =
-    serverStatus?.urls.find((url) => !url.includes('127.0.0.1')) ?? serverStatus?.urls[0] ?? '';
-  const multiviewUrl = multiviewBaseUrl ? `${multiviewBaseUrl}/multiview` : '';
+
+  const handleOpenUrl = async (url: string) => {
+    try {
+      await openUrl(url);
+    } catch (error) {
+      console.error('Failed to open URL:', error);
+      showToast(t('settings.httpServerOpenFailed', { error: String(error) }), 'error');
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -436,6 +461,33 @@ const Settings = () => {
                 slotProps={{ htmlInput: { min: 1024, max: 65535, step: 1 } }}
                 sx={{ width: 160 }}
               />
+              <FormControl size="small" sx={{ minWidth: 260 }} disabled={!settings.httpServerEnabled}>
+                <InputLabel id="http-server-nic-label">{t('settings.httpServerNic')}</InputLabel>
+                <Select
+                  labelId="http-server-nic-label"
+                  label={t('settings.httpServerNic')}
+                  value={settings.httpServerBind || ALL_NICS}
+                  onChange={(event) => handleChange('httpServerBind', event.target.value)}
+                >
+                  <MenuItem value={ALL_NICS}>{t('settings.httpServerNicAll')}</MenuItem>
+                  <MenuItem value={LOOPBACK}>{t('settings.httpServerNicLoopback')}</MenuItem>
+                  {settings.httpServerBind
+                    && settings.httpServerBind !== ALL_NICS
+                    && settings.httpServerBind !== LOOPBACK
+                    && !networkInterfaces.some((iface) => iface.ip_address === settings.httpServerBind)
+                    ? (
+                      <MenuItem value={settings.httpServerBind}>{settings.httpServerBind}</MenuItem>
+                    )
+                    : null}
+                  {networkInterfaces
+                    .filter((iface) => iface.ip_address && !iface.ip_address.startsWith('127.'))
+                    .map((iface) => (
+                      <MenuItem key={`${iface.name}-${iface.ip_address}`} value={iface.ip_address}>
+                        {iface.name} ({iface.ip_address})
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
               <Typography variant="body2" color="text.secondary">
                 {serverStatus?.running
                   ? t('settings.httpServerRunning', { port: serverStatus.port })
@@ -446,9 +498,18 @@ const Settings = () => {
             {serverStatus?.running && serverStatus.urls.length > 0 ? (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                 {serverStatus.urls.map((url) => (
-                  <Typography key={url} variant="body2" fontFamily="monospace" color="text.secondary">
+                  <Link
+                    key={url}
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => {
+                      void handleOpenUrl(url);
+                    }}
+                    sx={{ fontFamily: 'monospace', textAlign: 'left', width: 'fit-content' }}
+                  >
                     {url}
-                  </Typography>
+                  </Link>
                 ))}
               </Box>
             ) : null}
@@ -457,48 +518,6 @@ const Settings = () => {
               <Alert severity="warning" sx={{ mt: 1 }}>
                 {serverStatus.last_error}
               </Alert>
-            ) : null}
-
-            <FormGroup sx={{ mt: 2 }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.multiviewerEnabled}
-                    onChange={handleSwitchChange}
-                    name="multiviewerEnabled"
-                    color="primary"
-                    disabled={!settings.httpServerEnabled}
-                  />
-                }
-                label={t('settings.multiviewerEnable')}
-              />
-            </FormGroup>
-
-            {settings.multiviewerEnabled && !settings.httpServerEnabled ? (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                {t('settings.multiviewerNeedsServer')}
-              </Alert>
-            ) : null}
-
-            {settings.multiviewerEnabled && multiviewUrl ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('settings.multiviewerUrl')}
-                </Typography>
-                <Typography variant="body2" fontFamily="monospace">
-                  {multiviewUrl}
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => {
-                    navigator.clipboard.writeText(multiviewUrl);
-                    showToast(t('settings.multiviewerUrlCopied'), 'success');
-                  }}
-                >
-                  {t('settings.copy')}
-                </Button>
-              </Box>
             ) : null}
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

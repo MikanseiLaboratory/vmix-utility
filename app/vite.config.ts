@@ -41,7 +41,8 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
+    // IPv4 loopback: WebView2/Chrome often resolve "localhost" to 127.0.0.1 on Windows.
+    host: host || "127.0.0.1",
     hmr: host
       ? {
           protocol: "ws",
