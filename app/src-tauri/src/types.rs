@@ -148,8 +148,8 @@ impl<'de> Deserialize<'de> for AutoRefreshConfig {
             helper.duration
         };
         
-        // Clamp to valid range: 100ms to 10000ms
-        let duration_ms = duration_ms.max(100).min(10000);
+        // Clamp to valid range: 50ms to 10000ms
+        let duration_ms = duration_ms.max(50).min(10000);
         
         Ok(AutoRefreshConfig {
             enabled: helper.enabled,
@@ -249,6 +249,14 @@ fn default_locale() -> String {
     String::new()
 }
 
+fn default_http_server_port() -> u16 {
+    8089
+}
+
+fn default_http_server_bind() -> String {
+    "0.0.0.0".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub default_vmix_ip: String,
@@ -258,6 +266,17 @@ pub struct AppSettings {
     pub ui_density: UIDensity,
     #[serde(default = "default_locale")]
     pub locale: String,
+    /// Serve the built-in browser pages (Multiviewer) over HTTP + WebSocket.
+    #[serde(default)]
+    pub http_server_enabled: bool,
+    #[serde(default = "default_http_server_port")]
+    pub http_server_port: u16,
+    /// IPv4 to bind. `0.0.0.0` listens on every NIC.
+    #[serde(default = "default_http_server_bind")]
+    pub http_server_bind: String,
+    /// Expose the Multiviewer page; requires the HTTP server to be enabled.
+    #[serde(default)]
+    pub multiviewer_enabled: bool,
 }
 
 impl Default for AppSettings {
@@ -268,6 +287,10 @@ impl Default for AppSettings {
             theme: ThemeMode::Auto,
             ui_density: UIDensity::default(),
             locale: default_locale(),
+            http_server_enabled: false,
+            http_server_port: default_http_server_port(),
+            http_server_bind: default_http_server_bind(),
+            multiviewer_enabled: false,
         }
     }
 }
@@ -363,4 +386,53 @@ pub struct VmixVideoListInput {
     pub state: String,
     pub items: Vec<VmixVideoListItem>,
     pub selected_index: Option<i32>, // Currently selected item index in the list
+}
+/// Transport state of one playable input, used by the Video Seeker page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VideoTransportInfo {
+    pub key: String,
+    pub number: i32,
+    pub title: String,
+    pub short_title: String,
+    pub input_type: String,
+    pub state: String,
+    pub position_ms: i64,
+    pub duration_ms: i64,
+    pub looping: bool,
+    pub muted: bool,
+}
+
+/// vMix output flags shared by the runtime state and the WebSocket snapshot.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct StatusFlags {
+    pub recording: bool,
+    pub external: bool,
+    pub streaming: bool,
+    pub play_list: bool,
+    pub multi_corder: bool,
+    pub fullscreen: bool,
+    pub fade_to_black: bool,
+}
+
+/// Live vMix state for the app pages that poll transport information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VmixRuntimeState {
+    pub host: String,
+    pub active: i32,
+    pub preview: i32,
+    pub status: StatusFlags,
+    pub videos: Vec<VideoTransportInfo>,
+}
+
+/// Runtime status of the built-in HTTP/WebSocket server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HttpServerStatus {
+    pub running: bool,
+    pub port: u16,
+    /// Address the listener is bound to (`0.0.0.0` = every NIC).
+    #[serde(default)]
+    pub bind: String,
+    /// Base URLs clients can use (loopback first, then LAN addresses).
+    pub urls: Vec<String>,
+    pub last_error: Option<String>,
 }

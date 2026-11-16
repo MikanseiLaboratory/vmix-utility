@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useTranslation } from 'react-i18next';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { useUISettings } from '../hooks/useUISettings.tsx';
-import { settingsService, type CachedUpdateStatus, type UpdateInfo } from '../services/settingsService';
+import { settingsService, type CachedUpdateStatus, type HttpServerStatus, type UpdateInfo } from '../services/settingsService';
+import { NetworkScannerService, type NetworkInterface } from '../services/networkScannerService';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { applySavedLocale } from '../i18n/config';
 import type { SettingsLocaleChoice } from '../i18n/locale';
 import { parseStoredLocaleForSettings } from '../i18n/locale';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -19,13 +22,18 @@ import FormGroup from '@mui/material/FormGroup';
 import Grid2 from '@mui/material/Grid2';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
+import Link from '@mui/material/Link';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import { useToast, ToastSnackbar } from '../hooks/useToast';
 import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+
+const ALL_NICS = '0.0.0.0';
+const LOOPBACK = '127.0.0.1';
 
 function applyCachedUpdateStatus(
   status: CachedUpdateStatus,
@@ -59,7 +67,22 @@ const Settings = () => {
     logFilePath: '',
     uiDensity: 'comfortable' as 'compact' | 'comfortable' | 'spacious',
     locale: 'system' as SettingsLocaleChoice,
+    httpServerEnabled: false,
+    httpServerPort: 8089,
+    httpServerBind: ALL_NICS,
+    multiviewerEnabled: false,
   });
+  const [networkInterfaces, setNetworkInterfaces] = useState<NetworkInterface[]>([]);
+
+  const [serverStatus, setServerStatus] = useState<HttpServerStatus | null>(null);
+
+  const refreshServerStatus = async () => {
+    try {
+      setServerStatus(await settingsService.getHttpServerState());
+    } catch (error) {
+      console.error('Failed to read HTTP server state:', error);
+    }
+  };
 
   const [appInfo, setAppInfo] = useState<{
     version: string;
@@ -141,16 +164,23 @@ const Settings = () => {
         await setThemeMode(settings.theme as ThemeMode);
       }
 
-      await Promise.all([
-        settingsService.saveAppSettings({
-          defaultVMixIP: settings.defaultVMixIP,
-          defaultVMixPort: settings.defaultVMixPort,
-          theme: settings.theme,
-          uiDensity: settings.uiDensity,
-          locale: settings.locale === 'system' ? '' : settings.locale,
-        }),
-        settingsService.setLoggingConfig(settings.logLevel, settings.saveLogsToFile),
-      ]);
+      await settingsService.saveAppSettings({
+        defaultVMixIP: settings.defaultVMixIP,
+        defaultVMixPort: settings.defaultVMixPort,
+        theme: settings.theme,
+        uiDensity: settings.uiDensity,
+        locale: settings.locale === 'system' ? '' : settings.locale,
+        httpServerEnabled: settings.httpServerEnabled,
+        httpServerPort: effectivePort,
+        httpServerBind: settings.httpServerBind || ALL_NICS,
+        multiviewerEnabled: settings.multiviewerEnabled,
+      });
+
+      await settingsService.setLoggingConfig(settings.logLevel, settings.saveLogsToFile);
+
+      // The server starts/stops asynchronously; give it a moment before reading status.
+      await new Promise(resolve => setTimeout(resolve, 250));
+      await refreshServerStatus();
 
       await refreshSettings();
 
@@ -191,6 +221,17 @@ const Settings = () => {
         console.error('Failed to load update status:', error);
       }
 
+      void refreshServerStatus();
+      void NetworkScannerService.getNetworkInterfaces()
+        .then((list) => {
+          if (!cancelled) {
+            setNetworkInterfaces(list);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to load network interfaces:', error);
+        });
+
       try {
         const [appSettings, loggingConfig, info] = await configPromise;
         if (cancelled) {
@@ -206,6 +247,10 @@ const Settings = () => {
               theme: appSettings.theme as ThemeMode ?? 'Auto',
               uiDensity: appSettings.ui_density as 'compact' | 'comfortable' | 'spacious' ?? 'comfortable',
               locale: parseStoredLocaleForSettings(appSettings.locale),
+              httpServerEnabled: appSettings.http_server_enabled ?? false,
+              httpServerPort: appSettings.http_server_port ?? 8089,
+              httpServerBind: appSettings.http_server_bind || ALL_NICS,
+              multiviewerEnabled: appSettings.multiviewer_enabled ?? false,
             } : {}),
             ...(loggingConfig ? {
               logLevel: loggingConfig.level || 'info',
@@ -235,6 +280,17 @@ const Settings = () => {
       unlisten?.();
     };
   }, []);
+
+  const effectivePort = Math.min(65535, Math.max(1024, Math.round(settings.httpServerPort || 8089)));
+
+  const handleOpenUrl = async (url: string) => {
+    try {
+      await openUrl(url);
+    } catch (error) {
+      console.error('Failed to open URL:', error);
+      showToast(t('settings.httpServerOpenFailed', { error: String(error) }), 'error');
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -371,6 +427,102 @@ const Settings = () => {
               </Typography>
             </Box>
 
+          </Grid2>
+
+          <Grid2 size={12}>
+            <Typography variant="h6" gutterBottom>
+              {t('settings.httpServer')}
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+
+            <FormGroup>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={settings.httpServerEnabled}
+                    onChange={handleSwitchChange}
+                    name="httpServerEnabled"
+                    color="primary"
+                  />
+                }
+                label={t('settings.httpServerEnable')}
+              />
+            </FormGroup>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+              <TextField
+                label={t('settings.httpServerPort')}
+                type="number"
+                size="small"
+                value={settings.httpServerPort}
+                onChange={(event) => handleChange('httpServerPort', Number(event.target.value))}
+                onBlur={() => handleChange('httpServerPort', effectivePort)}
+                disabled={!settings.httpServerEnabled}
+                slotProps={{ htmlInput: { min: 1024, max: 65535, step: 1 } }}
+                sx={{ width: 160 }}
+              />
+              <FormControl size="small" sx={{ minWidth: 260 }} disabled={!settings.httpServerEnabled}>
+                <InputLabel id="http-server-nic-label">{t('settings.httpServerNic')}</InputLabel>
+                <Select
+                  labelId="http-server-nic-label"
+                  label={t('settings.httpServerNic')}
+                  value={settings.httpServerBind || ALL_NICS}
+                  onChange={(event) => handleChange('httpServerBind', event.target.value)}
+                >
+                  <MenuItem value={ALL_NICS}>{t('settings.httpServerNicAll')}</MenuItem>
+                  <MenuItem value={LOOPBACK}>{t('settings.httpServerNicLoopback')}</MenuItem>
+                  {settings.httpServerBind
+                    && settings.httpServerBind !== ALL_NICS
+                    && settings.httpServerBind !== LOOPBACK
+                    && !networkInterfaces.some((iface) => iface.ip_address === settings.httpServerBind)
+                    ? (
+                      <MenuItem value={settings.httpServerBind}>{settings.httpServerBind}</MenuItem>
+                    )
+                    : null}
+                  {networkInterfaces
+                    .filter((iface) => iface.ip_address && !iface.ip_address.startsWith('127.'))
+                    .map((iface) => (
+                      <MenuItem key={`${iface.name}-${iface.ip_address}`} value={iface.ip_address}>
+                        {iface.name} ({iface.ip_address})
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+              <Typography variant="body2" color="text.secondary">
+                {serverStatus?.running
+                  ? t('settings.httpServerRunning', { port: serverStatus.port })
+                  : t('settings.httpServerStopped')}
+              </Typography>
+            </Box>
+
+            {serverStatus?.running && serverStatus.urls.length > 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                {serverStatus.urls.map((url) => (
+                  <Link
+                    key={url}
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => {
+                      void handleOpenUrl(url);
+                    }}
+                    sx={{ fontFamily: 'monospace', textAlign: 'left', width: 'fit-content' }}
+                  >
+                    {url}
+                  </Link>
+                ))}
+              </Box>
+            ) : null}
+
+            {serverStatus?.last_error ? (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                {serverStatus.last_error}
+              </Alert>
+            ) : null}
+
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {t('settings.httpServerHelper')}
+            </Typography>
           </Grid2>
 
           <Grid2 size={12}>

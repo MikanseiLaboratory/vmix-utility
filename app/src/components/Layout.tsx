@@ -24,6 +24,9 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CodeIcon from '@mui/icons-material/Code';
+import FastForwardIcon from '@mui/icons-material/FastForward';
+import GridViewIcon from '@mui/icons-material/GridView';
+import ArticleIcon from '@mui/icons-material/Article';
 
 const pageModules = {
   connections: () => import('../pages/Connections'),
@@ -31,6 +34,9 @@ const pageModules = {
   blankGenerator: () => import('../pages/BlankGenerator'),
   inputManager: () => import('../pages/InputManager'),
   listManager: () => import('../pages/ListManager'),
+  videoSeeker: () => import('../pages/VideoSeeker'),
+  multiview: () => import('../pages/Multiview'),
+  logs: () => import('../pages/Logs'),
   settings: () => import('../pages/Settings'),
   developer: () => import('../pages/Developer'),
 } as const;
@@ -40,6 +46,9 @@ const ShortcutGenerator = lazy(pageModules.shortcutGenerator);
 const BlankGenerator = lazy(pageModules.blankGenerator);
 const InputManager = lazy(pageModules.inputManager);
 const ListManager = lazy(pageModules.listManager);
+const VideoSeeker = lazy(pageModules.videoSeeker);
+const Multiview = lazy(pageModules.multiview);
+const Logs = lazy(pageModules.logs);
 const Settings = lazy(pageModules.settings);
 const Developer = lazy(pageModules.developer);
 
@@ -104,6 +113,24 @@ const Layout = () => {
       icon: <PlaylistPlayIcon />,
       Page: ListManager,
       preload: pageModules.listManager,
+    },
+    {
+      text: t('layout.nav.videoSeeker'),
+      icon: <FastForwardIcon />,
+      Page: VideoSeeker,
+      preload: pageModules.videoSeeker,
+    },
+    {
+      text: t('layout.nav.multiview'),
+      icon: <GridViewIcon />,
+      Page: Multiview,
+      preload: pageModules.multiview,
+    },
+    {
+      text: t('layout.nav.logs'),
+      icon: <ArticleIcon />,
+      Page: Logs,
+      preload: pageModules.logs,
     },
     {
       text: t('layout.nav.settings'),

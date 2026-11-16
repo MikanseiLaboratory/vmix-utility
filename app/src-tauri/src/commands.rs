@@ -1,13 +1,16 @@
 use crate::types::{
-    AppInfo, AppSettings, AutoRefreshConfig, CachedUpdateStatus, ConnectionType, LoggingConfig,
-    UpdateInfo, VmixConnection, VmixInput, VmixVideoListInput, VmixVideoListItem,
+    AppInfo, AppSettings, AutoRefreshConfig, CachedUpdateStatus, ConnectionType, HttpServerStatus,
+    LoggingConfig, StatusFlags, UpdateInfo, VideoTransportInfo, VmixConnection, VmixInput,
+    VmixRuntimeState, VmixVideoListInput, VmixVideoListItem,
 };
 use crate::http_client::VmixClientWrapper;
 use crate::state::AppState;
 use crate::logging::LOGGING_CONFIG;
 use crate::app_log;
 use crate::network_scanner::{get_network_interfaces, scan_network_for_vmix, NetworkInterface, VmixScanResult};
+use crate::web_server;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, Emitter};
 use chrono::{DateTime, Duration, Utc};
 
@@ -107,7 +110,7 @@ pub async fn send_vmix_function(
     app_log!(info, "Sending vMix function command: {} to host: {}", function_name, host);
     
     let http_connection = {
-        let http_connections = state.http_connections.lock().unwrap();
+        let http_connections = crate::state::lock_mutex(&state.http_connections);
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
@@ -151,24 +154,30 @@ pub async fn get_vmix_inputs(
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
-    let vmix_data = match http_vmix {
-        Some(vmix) => vmix.get_vmix_data().await.map_err(|e| e.to_string())?,
+    let vmix_state = match http_vmix {
+        Some(vmix) => {
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
+        }
         None => {
             // Try to establish new HTTP connection
             let port = port.unwrap_or(8088);
             let vmix = VmixClientWrapper::new(&host, port);
-            vmix.get_vmix_data().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         }
     };
     
-    let inputs: Vec<VmixInput> = vmix_data.inputs.input.iter().map(|input| {
+    let inputs: Vec<VmixInput> = vmix_state.inputs.input.iter().map(|input| {
         VmixInput {
             key: input.key.clone(),
-            number: input.number.parse().unwrap_or(0),
+            number: input.number.trim().parse().unwrap_or(0),
             title: input.title.clone(),
-            short_title: input.short_title.clone(),
-            input_type: input.input_type.clone().unwrap_or_else(|| "Unknown".to_string()),
-            state: input.state.clone().unwrap_or_else(|| "Unknown".to_string()),
+            short_title: Some(input.short_title.clone()),
+            input_type: input.input_type.clone(),
+            state: input_state_name(&input.state),
         }
     }).collect();
     
@@ -189,16 +198,20 @@ pub async fn get_vmix_video_lists(
         http_connections.iter().find(|c| c.host() == host).cloned()
     };
     
-    // Get raw vmix-rs state and use shared builder function
+    // Get raw vmix-rs state (shared cache) and use shared builder function
     let vmix_state = match http_vmix {
         Some(vmix) => {
-            vmix.get_raw_vmix_state().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         },
         None => {
             // Try to establish new HTTP connection
             let port = port.unwrap_or(8088);
             let vmix = VmixClientWrapper::new(&host, port);
-            vmix.get_raw_vmix_state().await.map_err(|e| e.to_string())?
+            state.vmix_cache
+                .get(&vmix, crate::vmix_cache::CACHE_TTL)
+                .await?
         }
     };
 
@@ -356,23 +369,32 @@ pub async fn disconnect_vmix(
     
     // Disconnect from HTTP connections
     {
-        let mut http_connections = state.http_connections.lock().unwrap();
+        let mut http_connections = state.http_connections.lock().unwrap_or_else(|e| e.into_inner());
         http_connections.retain(|c| c.host() != host);
     }
     
     // Clean up state
     {
-        let mut configs = state.auto_refresh_configs.lock().unwrap();
+        let mut configs = state.auto_refresh_configs.lock().unwrap_or_else(|e| e.into_inner());
         configs.remove(&host);
     }
     {
-        let mut cache = state.last_status_cache.lock().unwrap();
+        let mut cache = state.last_status_cache.lock().unwrap_or_else(|e| e.into_inner());
         cache.remove(&host);
     }
     {
-        let mut inputs_cache = state.inputs_cache.lock().unwrap();
+        let mut inputs_cache = state.inputs_cache.lock().unwrap_or_else(|e| e.into_inner());
         inputs_cache.remove(&host);
     }
+    {
+        let mut video_lists_cache = state.video_lists_cache.lock().unwrap_or_else(|e| e.into_inner());
+        video_lists_cache.remove(&host);
+    }
+    {
+        let mut labels = state.connection_labels.lock().unwrap_or_else(|e| e.into_inner());
+        labels.remove(&host);
+    }
+    state.vmix_cache.invalidate(&host);
     
     // Emit connection removal event to frontend
     let _ = app_handle.emit("vmix-connection-removed", serde_json::json!({"host": host}));
@@ -649,22 +671,30 @@ pub async fn save_app_settings(
     app_log!(info, "Saving app settings: {:?}", settings);
     
     // Update app settings in state
-    {
+    let saved_settings = {
         let mut app_settings = state.app_settings.lock().unwrap();
         *app_settings = settings;
-    }
+        app_settings.clone()
+    };
     
     // Save to config file
     match state.save_config(&app_handle).await {
         Ok(_) => {
             app_log!(info, "App settings saved successfully");
-            Ok(())
         }
         Err(e) => {
             app_log!(error, "Failed to save app settings: {}", e);
-            Err(e)
+            return Err(e);
         }
     }
+
+    // Bring the HTTP server in line with the new settings (start / stop / restart).
+    apply_http_server_settings(state.inner(), &saved_settings)
+        .await
+        .map_err(|e| {
+            app_log!(error, "Failed to apply HTTP server settings: {}", e);
+            e
+        })
 }
 
 #[tauri::command]
@@ -1272,4 +1302,126 @@ pub async fn dismiss_donation_prompt(
     state.save_config(&app_handle).await?;
 
     Ok(())
+}
+// ---------------------------------------------------------------------------
+// Built-in HTTP/WebSocket server (#239) and runtime state (#176)
+// ---------------------------------------------------------------------------
+
+/// Start, stop or restart the embedded server so it matches `settings`.
+pub async fn apply_http_server_settings(
+    state: &AppState,
+    settings: &AppSettings,
+) -> Result<(), String> {
+    web_server::apply_settings(
+        &state.web_server,
+        Arc::clone(&state.http_connections),
+        Arc::clone(&state.auto_refresh_configs),
+        Arc::clone(&state.vmix_cache),
+        settings.http_server_enabled,
+        settings.http_server_port,
+        &settings.http_server_bind,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn get_http_server_state(
+    state: State<'_, AppState>,
+) -> Result<HttpServerStatus, String> {
+    let runtime = state.web_server.lock().map_err(|e| e.to_string())?;
+    Ok(runtime.status())
+}
+
+#[tauri::command]
+pub async fn get_logs(
+    _state: State<'_, AppState>,
+    source: Option<String>,
+    limit: Option<usize>,
+) -> Result<Vec<crate::logging::LogLine>, String> {
+    Ok(crate::logging::snapshot(source.as_deref(), limit))
+}
+
+fn parse_time_ms(raw: &str) -> i64 {
+    raw.trim()
+        .parse::<f64>()
+        .map(|value| value.round() as i64)
+        .unwrap_or(0)
+}
+
+pub fn input_state_name(state: &vmix_rs::models::State) -> String {
+    match state {
+        vmix_rs::models::State::Running => "Running".to_string(),
+        vmix_rs::models::State::Paused => "Paused".to_string(),
+        vmix_rs::models::State::Completed => "Completed".to_string(),
+    }
+}
+
+/// Build the transport-oriented view of the vMix state used by the Video Seeker page.
+pub fn build_runtime_state(host: &str, vmix: &vmix_rs::models::Vmix) -> VmixRuntimeState {
+    let videos = vmix
+        .inputs
+        .input
+        .iter()
+        .filter_map(|input| {
+            let duration_ms = parse_time_ms(&input.duration);
+            // Inputs without a duration are not seekable (cameras, titles, ...).
+            if duration_ms <= 0 {
+                return None;
+            }
+
+            Some(VideoTransportInfo {
+                key: input.key.clone(),
+                number: input.number.trim().parse().unwrap_or(0),
+                title: input.title.clone(),
+                short_title: input.short_title.clone(),
+                input_type: input.input_type.clone(),
+                state: input_state_name(&input.state),
+                position_ms: parse_time_ms(&input.position),
+                duration_ms,
+                looping: input.input_loop,
+                muted: input.muted.unwrap_or(false),
+            })
+        })
+        .collect();
+
+    VmixRuntimeState {
+        host: host.to_string(),
+        active: vmix.active.trim().parse().unwrap_or(0),
+        preview: vmix.preview.trim().parse().unwrap_or(0),
+        status: StatusFlags {
+            recording: vmix.recording,
+            external: vmix.external,
+            streaming: vmix.streaming,
+            play_list: vmix.play_list,
+            multi_corder: vmix.multi_corder,
+            fullscreen: vmix.fullscreen,
+            fade_to_black: vmix.fade_to_black,
+        },
+        videos,
+    }
+}
+
+#[tauri::command]
+pub async fn get_vmix_runtime_state(
+    state: State<'_, AppState>,
+    host: String,
+) -> Result<VmixRuntimeState, String> {
+    let client = {
+        let connections = crate::state::lock_mutex(&state.http_connections);
+        connections
+            .iter()
+            .find(|connection| connection.host() == host)
+            .cloned()
+    };
+
+    let Some(client) = client else {
+        return Err(format!("No vMix connection is registered for {}", host));
+    };
+
+    let vmix = state
+        .vmix_cache
+        .get(&client, crate::vmix_cache::CACHE_TTL)
+        .await?;
+
+    Ok(build_runtime_state(&host, &vmix))
 }

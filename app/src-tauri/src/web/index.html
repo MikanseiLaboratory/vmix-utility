@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vmix-utility HTTP server</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 2.5rem 1.5rem;
+      background: #121417;
+      color: #e8eaed;
+    }
+    main {
+      max-width: 48rem;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+    }
+    p.lead {
+      margin: 0 0 2rem;
+      color: #9aa0a6;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+    li a {
+      display: block;
+      padding: 1rem 1.25rem;
+      border: 1px solid #2c3035;
+      border-radius: 0.75rem;
+      background: #1a1d21;
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    li a:hover,
+    li a:focus-visible {
+      border-color: #8ab4f8;
+      background: #20242a;
+      outline: none;
+    }
+    li a strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+    li a span {
+      color: #9aa0a6;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    footer {
+      margin-top: 2.5rem;
+      color: #6b7076;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>vmix-utility HTTP server</h1>
+    <p class="lead">
+      These pages are served by the vmix-utility desktop app. They are read-only:
+      vMix state is pushed over WebSocket, control commands are never accepted from
+      the browser.
+    </p>
+    <ul>
+      <li>
+        <a href="/multiview">
+          <strong>Multiviewer</strong>
+          <span>
+            Live tally, titles and audio meters for a vMix Multiview input.
+            Add <code>?input=N</code> to pick the input number and
+            <code>&amp;host=192.0.2.10</code> to pick the connection.
+          </span>
+        </a>
+      </li>
+    </ul>
+    <footer>Enable or disable this server from Settings &rarr; HTTP Server in the app.</footer>
+  </main>
+</body>
+</html>

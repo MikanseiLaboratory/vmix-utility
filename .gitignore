@@ -16,3 +16,7 @@
 build/*
 server/static/*
 server/vMixMultiview/*
+
+# Local AI tooling state
+.cursor/
+.serena/
