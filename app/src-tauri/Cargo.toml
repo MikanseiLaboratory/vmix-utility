@@ -38,7 +38,7 @@ env_logger = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 once_cell = "1.19"
 urlencoding = "2.1"
-vmix-rs = { version = "=0.2.3", features = ["full"] }
+vmix-rs = { version = "=0.2.4", features = ["full"] }
 network-interface = { version = "2.0.3", features = ["serde"] }
 
 [profile.dev]

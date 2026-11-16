@@ -5247,9 +5247,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vmix-core"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54d29f27aa625a6c0fe23fe7511fbcf682a801d7a5be2023fbcb628a82e4bdb5"
+checksum = "8f054917b5caf432af757e5cf55f4f103e365d91afefa169ab6053642bca434e"
 dependencies = [
  "quick-xml",
  "serde",
@@ -5257,9 +5257,9 @@ dependencies = [
 
 [[package]]
 name = "vmix-http"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26863a194155904007ecf30cba5e3e59b6cb56fa33a5088a908455b2a5564a42"
+checksum = "526f40cd12b916709421d543faddf79c95fa19a39300a1c43ab66a258ad1bb35"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5272,9 +5272,9 @@ dependencies = [
 
 [[package]]
 name = "vmix-rs"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c59b4263c16aac6abd63813bd2fdfb558177e488b819047261c5a647cfe264fc"
+checksum = "567a5743c826f0f319f76a1ed441e139ac817c35b517db8d6973c4e82ec21dc5"
 dependencies = [
  "vmix-core",
  "vmix-http",
@@ -5284,9 +5284,9 @@ dependencies = [
 
 [[package]]
 name = "vmix-shortcuts"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c64e23bbb258046fd7c97d1a11b2929b58dbaf8faa085149b6b3ba6eecf15ed3"
+checksum = "1c32cdd9ddb74cd02be8e349707d3918d3c33db89db899b509bb2ead819914c5"
 dependencies = [
  "serde",
  "serde_json",
@@ -5294,9 +5294,9 @@ dependencies = [
 
 [[package]]
 name = "vmix-tcp"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05800e9982937ea01dd280ef93daeb2b865b0067ed8c77b03961d1854351ad29"
+checksum = "fc5a0c925f09f76b745380037ab847e002815d90fe3cd288b544d7af9952290e"
 dependencies = [
  "anyhow",
  "vmix-core",
