@@ -7,6 +7,8 @@ import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUISettings, getDensitySpacing } from '../hooks/useUISettings.tsx';
 import { FixedSizeList, type ListChildComponentProps, type FixedSizeListProps } from 'react-window';
 import ConnectionSelector from '../components/ConnectionSelector';
+import ValueOperatorSelect from '../components/ValueOperatorSelect';
+import { composeValue, encodeValue, splitOperator, type ValueOperator } from '../utils/queryValue';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -17,6 +19,7 @@ import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
@@ -53,6 +56,8 @@ interface QueryParam {
   id: number;
   key: string;
   value: string;
+  /** Relative operator: '' (absolute), '+' (`+=`) or '-' (`-=`). */
+  operator: ValueOperator;
 }
 
 interface Input {
@@ -258,7 +263,9 @@ const VirtualizedInputItem = memo((props: ListChildComponentProps<VirtualizedInp
     
     if (input.queryParams.length > 0) {
       for (const param of input.queryParams) {
-        url += `&${param.key}=${param.value}`;
+        // Relative values (`+=1000`) must be percent-encoded here: a literal
+        // `+=` is decoded to a space and vMix answers "Invalid Parameters".
+        url += `&${param.key}=${encodeValue(param.value, param.operator)}`;
       }
     }
     
@@ -269,7 +276,8 @@ const VirtualizedInputItem = memo((props: ListChildComponentProps<VirtualizedInp
     let script = `Function=${input.functionName}`;
     if (input.queryParams.length > 0) {
       for (const param of input.queryParams) {
-        script += `&${param.key}=${param.value}`;
+        // The Script API takes the raw value (`Value=+=1000`), not a URL.
+        script += `&${param.key}=${composeValue(param.value, param.operator)}`;
       }
     }
     return script;
@@ -373,9 +381,9 @@ const VirtualizedInputItem = memo((props: ListChildComponentProps<VirtualizedInp
               fontSize: `calc(${spacing.fontSize} - 0.05rem)`,
               lineHeight: spacing.lineHeight,
             }}
-            title={`${input.functionName} | ${input.queryParams.map(p => `${p.key}=${p.value}`).join(', ')}`}
+            title={`${input.functionName} | ${input.queryParams.map(p => `${p.key}=${composeValue(p.value, p.operator)}`).join(', ')}`}
           >
-            {input.functionName} | {input.queryParams.map(p => `${p.key}=${p.value}`).join(', ')}
+            {input.functionName} | {input.queryParams.map(p => `${p.key}=${composeValue(p.value, p.operator)}`).join(', ')}
           </Typography>
         </Box>
         
@@ -634,7 +642,7 @@ const ShortcutGenerator = () => {
       
       // Add Input param only if not 'None'
       if (special.type !== 'None') {
-        queryParams.push({ id: 1, key: 'Input', value: special.value });
+        queryParams.push({ id: 1, key: 'Input', value: special.value, operator: '' });
       }
       
       // Add shared query params
@@ -654,7 +662,7 @@ const ShortcutGenerator = () => {
     // Add regular inputs
     const regularInputs = vmixInputs.map((input, index) => {
       const queryParams: QueryParam[] = [
-        { id: 1, key: 'Input', value: input.key },
+        { id: 1, key: 'Input', value: input.key, operator: '' },
         ...sharedQueryParams.map(param => ({ ...param, id: param.id + 1000 }))
       ];
 
@@ -678,20 +686,32 @@ const ShortcutGenerator = () => {
   // State for new query param
   const [newParamKey, setNewParamKey] = useState('');
   const [newParamValue, setNewParamValue] = useState('');
+  const [newParamOperator, setNewParamOperator] = useState<ValueOperator>('');
+
+  const handleNewParamValueChange = useCallback((rawValue: string) => {
+    const parsed = splitOperator(rawValue);
+    if (parsed.operator) {
+      setNewParamOperator(parsed.operator);
+      setNewParamValue(parsed.value);
+      return;
+    }
+    setNewParamValue(rawValue);
+  }, []);
 
   const handleAddSharedParam = useCallback(() => {
     if (newParamKey && newParamValue) {
       startTransition(() => {
         setSharedQueryParams(prev => {
           const newId = prev.length > 0 ? Math.max(...prev.map(p => p.id)) + 1 : 1;
-          return [...prev, { id: newId, key: newParamKey, value: newParamValue }];
+          return [...prev, { id: newId, key: newParamKey, value: newParamValue, operator: newParamOperator }];
         });
       });
 
       setNewParamKey('');
       setNewParamValue('');
+      setNewParamOperator('');
     }
-  }, [newParamKey, newParamValue, startTransition]);
+  }, [newParamKey, newParamValue, newParamOperator, startTransition]);
 
   const handleDeleteSharedParam = useCallback((paramId: number) => {
     startTransition(() => {
@@ -699,11 +719,37 @@ const ShortcutGenerator = () => {
     });
   }, [startTransition]);
 
-  const handleSharedParamChange = useCallback((paramId: number, key: string, value: string) => {
+  const handleSharedParamKeyChange = useCallback((paramId: number, key: string) => {
     startTransition(() => {
       setSharedQueryParams(prev => prev.map(param =>
         param.id === paramId
-          ? { ...param, key, value }
+          ? { ...param, key }
+          : param
+      ));
+    });
+  }, [startTransition]);
+
+  const handleSharedParamValueChange = useCallback((paramId: number, rawValue: string) => {
+    // A pasted/typed `+=` / `-=` prefix moves into the operator control so the
+    // same value can round-trip through the URL builder.
+    const parsed = splitOperator(rawValue);
+    startTransition(() => {
+      setSharedQueryParams(prev => prev.map(param => {
+        if (param.id !== paramId) {
+          return param;
+        }
+        return parsed.operator
+          ? { ...param, value: parsed.value, operator: parsed.operator }
+          : { ...param, value: rawValue };
+      }));
+    });
+  }, [startTransition]);
+
+  const handleSharedParamOperatorChange = useCallback((paramId: number, operator: ValueOperator) => {
+    startTransition(() => {
+      setSharedQueryParams(prev => prev.map(param =>
+        param.id === paramId
+          ? { ...param, operator }
           : param
       ));
     });
@@ -746,7 +792,8 @@ const ShortcutGenerator = () => {
         newParams.push({
           id: nextId++,
           key: paramKey,
-          value: ''
+          value: '',
+          operator: ''
         });
       }
     });
@@ -812,7 +859,7 @@ const ShortcutGenerator = () => {
   const generateParamsObject = useCallback((input: Input) => {
     const params: { [key: string]: string } = {};
     input.queryParams.forEach(param => {
-      params[param.key] = param.value;
+      params[param.key] = composeValue(param.value, param.operator);
     });
     return params;
   }, []);
@@ -1018,111 +1065,130 @@ const ShortcutGenerator = () => {
                     <TableBody>
                       {sharedQueryParams.map((param) => (
                         <TableRow key={param.id} hover>
-                          <TableCell sx={{ p: 1 }}>
-                            <TextField
-                              fullWidth
-                              value={param.key}
-                              onChange={(e) => handleSharedParamChange(param.id, e.target.value, param.value)}
-                              size="small"
-                              placeholder={t('shortcut.paramKeyPlaceholder')}
-                              variant="outlined"
-                              sx={{ 
-                                '& .MuiOutlinedInput-root': {
-                                  fontSize: '0.875rem'
-                                }
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ p: 1 }}>
-                            {(() => {
-                              const suggestions = getParameterValueSuggestions(param.key);
-                              const isNumeric = isNumericParameter(param.key);
-                              const isMixParam = param.key.toLowerCase() === 'mix';
-                              
-                              if (suggestions.length > 0) {
-                                return (
-                                  <Autocomplete
-                                    freeSolo
-                                    options={suggestions}
-                                    getOptionLabel={(option) => {
-                                      if (typeof option === 'string') return option;
-                                      if (isMixParam) return option.value;
-                                      return option.label || option.value;
-                                    }}
-                                    isOptionEqualToValue={(option, val) => {
-                                      const optVal = typeof option === 'string' ? option : option.value;
-                                      if (val == null) return false;
-                                      if (typeof val === 'string') return optVal === val;
-                                      return optVal === val.value;
-                                    }}
-                                    value={suggestions.find(s => s.value === param.value) || param.value}
-                                    onInputChange={(_event, newValue, reason) => {
-                                      if (reason === 'input') {
-                                        handleSharedParamChange(param.id, param.key, newValue || '');
-                                      } else if (reason === 'clear') {
-                                        handleSharedParamChange(param.id, param.key, '');
-                                      }
-                                    }}
-                                    onChange={(_event, newValue) => {
-                                      if (typeof newValue === 'string') {
-                                        handleSharedParamChange(param.id, param.key, newValue);
-                                      } else if (newValue) {
-                                        handleSharedParamChange(param.id, param.key, newValue.value);
-                                      }
-                                    }}
-                                    renderInput={(params) => {
-                                      const { inputProps, ...textFieldParams } = params;
-                                      return (
-                                        <TextField
-                                          {...textFieldParams}
-                                          size="small"
-                                          placeholder={t('shortcut.paramValuePlaceholder')}
-                                          variant="outlined"
-                                          type="text"
-                                          slotProps={{
-                                            htmlInput: {
-                                              ...inputProps,
-                                              ...(isNumeric ? { inputMode: 'numeric' as const } : {}),
-                                            },
-                                          }}
-                                          sx={{ 
-                                            '& .MuiOutlinedInput-root': {
-                                              fontSize: '0.875rem'
-                                            }
-                                          }}
-                                        />
-                                      );
-                                    }}
-                                    renderOption={(props, option) => (
-                                      <Box component="li" {...props}>
-                                        <Typography variant="body2">
-                                          {typeof option === 'string' ? option : option.label}
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                    sx={{ width: '100%' }}
-                                  />
-                                );
-                              }
-                              
-                              return (
+                              <TableCell sx={{ p: 1 }}>
                                 <TextField
                                   fullWidth
-                                  value={param.value}
-                                  onChange={(e) => handleSharedParamChange(param.id, param.key, e.target.value)}
+                                  value={param.key}
+                                  onChange={(e) => handleSharedParamKeyChange(param.id, e.target.value)}
                                   size="small"
-                                  placeholder={t('shortcut.paramValuePlaceholder')}
+                                  placeholder={t('shortcut.paramKeyPlaceholder')}
                                   variant="outlined"
-                                  type={isNumeric ? 'number' : 'text'}
                                   sx={{ 
                                     '& .MuiOutlinedInput-root': {
                                       fontSize: '0.875rem'
                                     }
                                   }}
                                 />
-                              );
-                            })()}
-                          </TableCell>
+                              </TableCell>
+                              <TableCell sx={{ p: 1 }}>
+                                {(() => {
+                                  const suggestions = getParameterValueSuggestions(param.key);
+                                  const isNumeric = isNumericParameter(param.key);
+                                  const isMixParam = param.key.toLowerCase() === 'mix';
+                                  const operatorAdornment = (
+                                    <InputAdornment position="start" sx={{ mr: 0.25, ml: -0.5 }}>
+                                      <ValueOperatorSelect
+                                        operator={param.operator}
+                                        paramKey={param.key}
+                                        onChange={(operator) => handleSharedParamOperatorChange(param.id, operator)}
+                                      />
+                                    </InputAdornment>
+                                  );
+                                  
+                                  if (suggestions.length > 0) {
+                                    return (
+                                      <Autocomplete
+                                        freeSolo
+                                        options={suggestions}
+                                        getOptionLabel={(option) => {
+                                          if (typeof option === 'string') return option;
+                                          if (isMixParam) return option.value;
+                                          return option.label || option.value;
+                                        }}
+                                        isOptionEqualToValue={(option, val) => {
+                                          const optVal = typeof option === 'string' ? option : option.value;
+                                          if (val == null) return false;
+                                          if (typeof val === 'string') return optVal === val;
+                                          return optVal === val.value;
+                                        }}
+                                        value={suggestions.find(s => s.value === param.value) || param.value}
+                                        onInputChange={(_event, newValue, reason) => {
+                                          if (reason === 'input') {
+                                            handleSharedParamValueChange(param.id, newValue || '');
+                                          } else if (reason === 'clear') {
+                                            handleSharedParamValueChange(param.id, '');
+                                          }
+                                        }}
+                                        onChange={(_event, newValue) => {
+                                          if (typeof newValue === 'string') {
+                                            handleSharedParamValueChange(param.id, newValue);
+                                          } else if (newValue) {
+                                            handleSharedParamValueChange(param.id, newValue.value);
+                                          }
+                                        }}
+                                        renderInput={(params) => {
+                                          const { inputProps, InputProps, ...textFieldParams } = params;
+                                          return (
+                                            <TextField
+                                              {...textFieldParams}
+                                              size="small"
+                                              placeholder={t('shortcut.paramValuePlaceholder')}
+                                              variant="outlined"
+                                              type="text"
+                                              slotProps={{
+                                                input: {
+                                                  ...InputProps,
+                                                  startAdornment: (
+                                                    <>
+                                                      {operatorAdornment}
+                                                      {InputProps?.startAdornment}
+                                                    </>
+                                                  ),
+                                                },
+                                                htmlInput: {
+                                                  ...inputProps,
+                                                  ...(isNumeric ? { inputMode: 'numeric' as const } : {}),
+                                                },
+                                              }}
+                                              sx={{ 
+                                                '& .MuiOutlinedInput-root': {
+                                                  fontSize: '0.875rem'
+                                                }
+                                              }}
+                                            />
+                                          );
+                                        }}
+                                        renderOption={(props, option) => (
+                                          <Box component="li" {...props}>
+                                            <Typography variant="body2">
+                                              {typeof option === 'string' ? option : option.label}
+                                            </Typography>
+                                          </Box>
+                                        )}
+                                        sx={{ width: '100%' }}
+                                      />
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <TextField
+                                      fullWidth
+                                      value={param.value}
+                                      onChange={(e) => handleSharedParamValueChange(param.id, e.target.value)}
+                                      size="small"
+                                      placeholder={t('shortcut.paramValuePlaceholder')}
+                                      variant="outlined"
+                                      type={isNumeric ? 'number' : 'text'}
+                                      slotProps={{ input: { startAdornment: operatorAdornment } }}
+                                      sx={{ 
+                                        '& .MuiOutlinedInput-root': {
+                                          fontSize: '0.875rem'
+                                        }
+                                      }}
+                                    />
+                                  );
+                                })()}
+                              </TableCell>
                           <TableCell sx={{ p: 1, textAlign: 'center' }}>
                             <IconButton
                               size="small"
@@ -1184,6 +1250,15 @@ const ShortcutGenerator = () => {
                           const suggestions = getParameterValueSuggestions(newParamKey);
                           const isNumeric = isNumericParameter(newParamKey);
                           const isMixParam = newParamKey.toLowerCase() === 'mix';
+                          const operatorAdornment = (
+                            <InputAdornment position="start" sx={{ mr: 0.25, ml: -0.5 }}>
+                              <ValueOperatorSelect
+                                operator={newParamOperator}
+                                paramKey={newParamKey}
+                                onChange={setNewParamOperator}
+                              />
+                            </InputAdornment>
+                          );
                           
                           if (suggestions.length > 0) {
                             return (
@@ -1204,20 +1279,20 @@ const ShortcutGenerator = () => {
                                 value={suggestions.find(s => s.value === newParamValue) || newParamValue}
                                 onInputChange={(_event, newValue, reason) => {
                                   if (reason === 'input') {
-                                    setNewParamValue(newValue || '');
+                                    handleNewParamValueChange(newValue || '');
                                   } else if (reason === 'clear') {
                                     setNewParamValue('');
                                   }
                                 }}
                                 onChange={(_event, newValue) => {
                                   if (typeof newValue === 'string') {
-                                    setNewParamValue(newValue);
+                                    handleNewParamValueChange(newValue);
                                   } else if (newValue) {
-                                    setNewParamValue(newValue.value);
+                                    handleNewParamValueChange(newValue.value);
                                   }
                                 }}
                                 renderInput={(params) => {
-                                  const { inputProps, ...textFieldParams } = params;
+                                  const { inputProps, InputProps, ...textFieldParams } = params;
                                   return (
                                     <TextField
                                       {...textFieldParams}
@@ -1226,6 +1301,15 @@ const ShortcutGenerator = () => {
                                       variant="outlined"
                                       type="text"
                                       slotProps={{
+                                        input: {
+                                          ...InputProps,
+                                          startAdornment: (
+                                            <>
+                                              {operatorAdornment}
+                                              {InputProps?.startAdornment}
+                                            </>
+                                          ),
+                                        },
                                         htmlInput: {
                                           ...inputProps,
                                           ...(isNumeric ? { inputMode: 'numeric' as const } : {}),
@@ -1261,10 +1345,11 @@ const ShortcutGenerator = () => {
                               fullWidth
                               placeholder={t('shortcut.paramValuePlaceholder')}
                               value={newParamValue}
-                              onChange={(e) => setNewParamValue(e.target.value)}
+                              onChange={(e) => handleNewParamValueChange(e.target.value)}
                               size="small"
                               variant="outlined"
                               type={isNumeric ? 'number' : 'text'}
+                              slotProps={{ input: { startAdornment: operatorAdornment } }}
                               sx={{ 
                                 '& .MuiOutlinedInput-root': {
                                   fontSize: '0.875rem'

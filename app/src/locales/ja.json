@@ -370,7 +370,13 @@
     "dynamicRaw1": "Dynamic1",
     "dynamicRaw2": "Dynamic2",
     "dynamicRaw3": "Dynamic3",
-    "dynamicRaw4": "Dynamic4"
+    "dynamicRaw4": "Dynamic4",
+    "valueOperator": "値の演算子",
+    "valueOperatorAria": "{{key}} の値の演算子（現在 {{operator}}）",
+    "valueOperatorMenu": "値の演算子を選択",
+    "operatorAbsolute": "絶対値",
+    "operatorAdd": "加算",
+    "operatorSubtract": "減算"
   },
   "logs": {
     "title": "ログ",
