@@ -47,6 +47,11 @@ jobs:
           cd app
           bun install
 
+      - name: Run frontend tests
+        run: |
+          cd app
+          bun test
+
       - name: Set build environment variables
         shell: bash
         run: |

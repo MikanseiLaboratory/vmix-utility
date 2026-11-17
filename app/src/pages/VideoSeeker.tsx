@@ -31,6 +31,7 @@ import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useToast, ToastSnackbar } from '../hooks/useToast';
 import { useVMixStatus } from '../hooks/useVMixStatus';
 import { vmixService, type VideoTransportInfo, type VmixRuntimeState } from '../services/vmixService';
+import { seekMillis, seekRelative } from '../utils/seekValue';
 
 const POLL_INTERVALS = [100, 200, 500, 1000];
 const DEFAULT_POLL_MS = 200;
@@ -102,6 +103,17 @@ const VideoSeeker = () => {
     fromMs?: number;
     until: number;
   } | null>(null);
+  // Seeks run one at a time; otherwise rapid clicks each start from a stale
+  // position and fight over the same playhead.
+  const seekChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Frames requested by rapid button clicks, applied by a single worker.
+  const pendingFramesRef = useRef(0);
+  const frameWorkerRef = useRef(false);
+  // Last position known to be true, used as the base for the next step.
+  const latestPositionRef = useRef(0);
+  // While a seek is running, ignore polled positions for this input so the
+  // slider cannot snap to a half-applied value.
+  const busyKeyRef = useRef<string | null>(null);
   // vMix reports Running for the few ms of a jog; remember the state the user
   // left the input in so the transport buttons do not flip.
   const stateHoldRef = useRef<{ key: string; state: string; until: number } | null>(null);
@@ -142,6 +154,9 @@ const VideoSeeker = () => {
     setSwipePx(0);
     setFrameText(null);
     swipeStateRef.current = { px: 0, frames: 0, active: false, basePos: 0, target: 0 };
+    pendingFramesRef.current = 0;
+    busyKeyRef.current = null;
+    latestPositionRef.current = selectedVideo?.position_ms ?? 0;
   }, [selectedKey]);
 
   const applyOptimistic = useCallback((next: VmixRuntimeState): VmixRuntimeState => {
@@ -159,7 +174,9 @@ const VideoSeeker = () => {
       hold = null;
     }
 
-    if (hold && hold.positionMs != null) {
+    // A running seek owns the playhead; do not treat the polled value as
+    // confirmation until it finishes.
+    if (hold && hold.positionMs != null && busyKeyRef.current !== hold.key) {
       const server = next.videos.find((video) => video.key === hold?.key);
       if (server && Math.abs(server.position_ms - hold.positionMs) <= 250) {
         optimisticRef.current = null;
@@ -173,10 +190,11 @@ const VideoSeeker = () => {
 
     const pending = hold;
     const sticky = stateHoldRef.current;
+    const busyKey = busyKeyRef.current;
     return {
       ...next,
       videos: next.videos.map((video) => {
-        if (pending && video.key === pending.key && now < pending.until) {
+        if (pending && video.key === pending.key && (now < pending.until || busyKey === pending.key)) {
           return {
             ...video,
             position_ms: pending.positionMs ?? video.position_ms,
@@ -220,6 +238,13 @@ const VideoSeeker = () => {
     }
     try {
       const next = await vmixService.getVmixRuntimeState(selectedConnection);
+      // Track the authoritative position for the selected input so rapid
+      // steps always build on the real playhead, not on an optimistic value.
+      const selected = selectedKeyRef.current;
+      const found = selected ? next.videos.find((video) => video.key === selected) : null;
+      if (found && !busyKeyRef.current && dragValueRef.current == null) {
+        latestPositionRef.current = found.position_ms;
+      }
       setRuntime(applyOptimistic(next));
       setLoadError(null);
     } catch (error) {
@@ -261,7 +286,8 @@ const VideoSeeker = () => {
         return;
       }
       seekInFlightRef.current = true;
-      await send('SetPosition', { Input: videoKey, Value: String(positionMs) });
+      latestPositionRef.current = positionMs;
+      await send('SetPosition', { Input: videoKey, Value: seekMillis(positionMs) });
       seekInFlightRef.current = false;
       if (pendingSeekRef.current !== null) {
         const pending = pendingSeekRef.current;
@@ -278,6 +304,8 @@ const VideoSeeker = () => {
       if (!video) {
         return;
       }
+      // An explicit scrub wins over any queued frame steps.
+      pendingFramesRef.current = 0;
       const clamped = Math.max(0, Math.min(video.duration_ms, Math.round(positionMs)));
       patchVideo(video.key, { position_ms: clamped }, video.position_ms);
       void flushSeek(video.key, clamped);
@@ -319,6 +347,17 @@ const VideoSeeker = () => {
   );
 
   /**
+   * Run a seek after any seek already in progress. Rapid clicks therefore
+   * queue up instead of all starting from the same stale position.
+   */
+  const enqueueSeek = useCallback((task: () => Promise<void>) => {
+    const run = seekChainRef.current.then(task, task);
+    // Keep the chain alive even when a task fails.
+    seekChainRef.current = run.catch(() => undefined);
+    return run;
+  }, []);
+
+  /**
    * Play at `rate` for `ms` of media time, then pause again. vMix cannot move
    * the playhead by less than a keyframe while paused, but playback advances
    * smoothly, so this is the only way to get sub-keyframe precision.
@@ -326,6 +365,7 @@ const VideoSeeker = () => {
   const playFor = useCallback(
     async (videoKey: string, ms: number, rate: number) => {
       const hold = Math.max(40, Math.round(ms / rate));
+      // SetRate takes fractional speeds (0.1-4); only SetPosition needs integers.
       await send('SetRate', { Input: videoKey, Value: String(rate) });
       await send('Play', { Input: videoKey });
       await new Promise((resolve) => setTimeout(resolve, hold));
@@ -347,10 +387,10 @@ const VideoSeeker = () => {
         return;
       }
       const stepMs = Math.abs(frames) * frameMs;
-      const before = video.position_ms;
+      const before = latestPositionRef.current;
 
       if (frames > 0) {
-        patchVideo(videoKey, { position_ms: before + stepMs }, before);
+        patchVideo(videoKey, { position_ms: Math.round(before + stepMs) }, before);
         stateHoldRef.current = {
           key: videoKey,
           state: 'Paused',
@@ -361,25 +401,73 @@ const VideoSeeker = () => {
         // Backwards playback is not available, so the seek snaps to a keyframe.
         // If that lands further back than requested, stay put instead of
         // jumping a whole keyframe.
-        await send('SetPosition', { Input: videoKey, Value: String(Math.max(0, before - stepMs)) });
+        await send('SetPosition', { Input: videoKey, Value: seekMillis(before - stepMs) });
         await settle();
         const landed = await readPosition(videoKey);
         if (landed !== null && before - landed > stepMs + frameMs * 2) {
-          await send('SetPosition', { Input: videoKey, Value: String(before) });
+          await send('SetPosition', { Input: videoKey, Value: seekMillis(before) });
           await settle();
-          patchVideo(videoKey, { position_ms: (await readPosition(videoKey)) ?? before });
+          const restored = (await readPosition(videoKey)) ?? before;
+          latestPositionRef.current = restored;
+          patchVideo(videoKey, { position_ms: restored });
           return;
         }
         if (landed !== null) {
+          latestPositionRef.current = landed;
           patchVideo(videoKey, { position_ms: landed });
           return;
         }
       }
 
-      const actual = await readPosition(videoKey);
-      patchVideo(videoKey, { position_ms: actual ?? before });
+      const actual = (await readPosition(videoKey)) ?? before;
+      latestPositionRef.current = actual;
+      patchVideo(videoKey, { position_ms: actual });
     },
     [frameMs, patchVideo, playFor, readPosition, selectedVideo, send, settle],
+  );
+
+  /**
+   * Apply queued frame steps one at a time. While clicks keep arriving, the
+   * worker keeps draining the counter, so the playhead advances exactly as
+   * many frames as the user asked for.
+   */
+  const runFrameWorker = useCallback(async () => {
+    if (frameWorkerRef.current) {
+      return;
+    }
+    frameWorkerRef.current = true;
+    const video = selectedVideo;
+    if (!video) {
+      frameWorkerRef.current = false;
+      return;
+    }
+    const key = video.key;
+    busyKeyRef.current = key;
+    try {
+      while (pendingFramesRef.current !== 0) {
+        const frames = pendingFramesRef.current;
+        pendingFramesRef.current = 0;
+        await microStep(key, frames);
+      }
+    } finally {
+      busyKeyRef.current = null;
+      frameWorkerRef.current = false;
+    }
+  }, [microStep, selectedVideo]);
+
+  const stepFrames = useCallback(
+    (frames: number) => {
+      const video = selectedVideo;
+      if (!video || frames === 0) {
+        return;
+      }
+      pendingFramesRef.current += frames;
+      if (Date.now() >= (optimisticRef.current?.until ?? 0) && !frameWorkerRef.current) {
+        latestPositionRef.current = video.position_ms;
+      }
+      void runFrameWorker();
+    },
+    [runFrameWorker, selectedVideo],
   );
 
   /**
@@ -398,7 +486,7 @@ const VideoSeeker = () => {
         return;
       }
       const key = video.key;
-      const before = video.position_ms;
+      const before = latestPositionRef.current;
       const clamped = Math.max(0, Math.min(video.duration_ms, Math.round(targetMs)));
       const delta = clamped - before;
       if (delta === 0) {
@@ -406,55 +494,61 @@ const VideoSeeker = () => {
       }
 
       if (Math.abs(delta) <= frameMs * 3) {
-        void microStep(key, Math.max(1, Math.abs(Math.round(delta / frameMs))) * Math.sign(delta));
+        stepFrames(Math.max(1, Math.abs(Math.round(delta / frameMs))) * Math.sign(delta));
         return;
       }
 
-      const forward = delta > 0;
-      const absolute = forward
-        ? Math.min(video.duration_ms, clamped + 1)
-        : clamped;
+      busyKeyRef.current = key;
+      try {
+        const forward = delta > 0;
+        const absolute = forward
+          ? Math.min(video.duration_ms, clamped + 1)
+          : clamped;
 
-      patchVideo(key, { position_ms: clamped }, before);
-      await send('SetPosition', { Input: key, Value: String(absolute) });
-      await settle();
-
-      let actual = await readPosition(key);
-      if (actual === null) {
-        patchVideo(key, { position_ms: clamped });
-        return;
-      }
-
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const remaining = clamped - actual;
-        // Only close the gap in the requested direction.
-        if (remaining === 0 || (remaining > 0) !== forward) {
-          break;
-        }
-        if (Math.abs(remaining) <= 12) {
-          break;
-        }
-        const step = remaining + (forward ? 1 : -1);
-        const sign = forward ? '+=' : '-=';
-        await send('SetPosition', { Input: key, Value: `${sign}${Math.abs(step)}` });
+        patchVideo(key, { position_ms: clamped }, before);
+        await send('SetPosition', { Input: key, Value: seekMillis(absolute) });
         await settle();
-        const next = await readPosition(key);
-        if (next === null || next === actual) {
-          break;
+
+        let actual = await readPosition(key);
+        if (actual === null) {
+          patchVideo(key, { position_ms: clamped });
+          return;
         }
-        actual = next;
-      }
 
-      // A snap must never move the playhead further than the request.
-      if (Math.abs(actual - before) > Math.abs(delta) + frameMs * 2) {
-        await send('SetPosition', { Input: key, Value: String(before) });
-        await settle();
-        actual = (await readPosition(key)) ?? before;
-      }
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const remaining = clamped - actual;
+          // Only close the gap in the requested direction.
+          if (remaining === 0 || (remaining > 0) !== forward) {
+            break;
+          }
+          if (Math.abs(remaining) <= 12) {
+            break;
+          }
+          const step = remaining + (forward ? 1 : -1);
+          const sign = forward ? '+=' : '-=';
+          await send('SetPosition', { Input: key, Value: seekRelative(sign, step) });
+          await settle();
+          const next = await readPosition(key);
+          if (next === null || next === actual) {
+            break;
+          }
+          actual = next;
+        }
 
-      patchVideo(key, { position_ms: actual });
+        // A snap must never move the playhead further than the request.
+        if (Math.abs(actual - before) > Math.abs(delta) + frameMs * 2) {
+          await send('SetPosition', { Input: key, Value: seekMillis(before) });
+          await settle();
+          actual = (await readPosition(key)) ?? before;
+        }
+
+        latestPositionRef.current = actual;
+        patchVideo(key, { position_ms: actual });
+      } finally {
+        busyKeyRef.current = null;
+      }
     },
-    [frameMs, microStep, patchVideo, readPosition, selectedVideo, send, settle],
+    [frameMs, patchVideo, readPosition, selectedVideo, send, settle, stepFrames],
   );
 
   const nudge = useCallback(
@@ -463,9 +557,13 @@ const VideoSeeker = () => {
       if (!video) {
         return;
       }
-      void seekToPosition(video.position_ms + deltaMs);
+      if (Math.abs(deltaMs) <= frameMs * 3) {
+        stepFrames(Math.max(1, Math.abs(Math.round(deltaMs / frameMs))) * Math.sign(deltaMs));
+        return;
+      }
+      void enqueueSeek(() => seekToPosition(latestPositionRef.current + deltaMs));
     },
-    [seekToPosition, selectedVideo],
+    [enqueueSeek, frameMs, seekToPosition, selectedVideo, stepFrames],
   );
 
   const togglePlayback = useCallback(() => {
@@ -473,16 +571,22 @@ const VideoSeeker = () => {
     if (!video) {
       return;
     }
+    // A frame step drives Play/Pause/SetRate itself; changing them midway
+    // would leave the input running or at the wrong speed.
+    if (frameWorkerRef.current) {
+      return;
+    }
     const nextState = video.state === 'Running' ? 'Paused' : 'Running';
     patchVideo(video.key, { state: nextState });
     void send(nextState === 'Paused' ? 'Pause' : 'Play', { Input: video.key });
   }, [patchVideo, selectedVideo, send]);
-
   const restart = useCallback(() => {
     const video = selectedVideo;
     if (!video) {
       return;
     }
+    pendingFramesRef.current = 0;
+    latestPositionRef.current = 0;
     patchVideo(video.key, { position_ms: 0 });
     void send('Restart', { Input: video.key });
   }, [patchVideo, selectedVideo, send]);
@@ -550,14 +654,16 @@ const VideoSeeker = () => {
         return;
       }
       state.frames = frames;
-      state.target = Math.max(
-        0,
-        Math.min(video.duration_ms, state.basePos + frames * frameMs),
+      state.target = Math.round(
+        Math.max(
+          0,
+          Math.min(video.duration_ms, state.basePos + frames * frameMs),
+        ),
       );
 
       // Batch: show the new position at once, but send at most every
       // SWIPE_FLUSH_MS so a long drag does not flood vMix.
-      patchVideo(video.key, { position_ms: state.target }, video.position_ms);
+      patchVideo(video.key, { position_ms: state.target }, state.basePos);
       if (swipeFlushTimerRef.current !== null) {
         return;
       }
@@ -576,11 +682,12 @@ const VideoSeeker = () => {
     }
     event.currentTarget.setPointerCapture(event.pointerId);
     const state = swipeStateRef.current;
+    const base = latestPositionRef.current;
     state.px = 0;
     state.frames = 0;
     state.active = true;
-    state.basePos = selectedVideo.position_ms;
-    state.target = selectedVideo.position_ms;
+    state.basePos = base;
+    state.target = base;
     swipeLastXRef.current = event.clientX;
     swipeLastTRef.current = performance.now();
     setScrubbing(true);
