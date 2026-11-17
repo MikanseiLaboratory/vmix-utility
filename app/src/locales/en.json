@@ -370,7 +370,13 @@
     "dynamicRaw1": "Dynamic1",
     "dynamicRaw2": "Dynamic2",
     "dynamicRaw3": "Dynamic3",
-    "dynamicRaw4": "Dynamic4"
+    "dynamicRaw4": "Dynamic4",
+    "valueOperator": "Value operator",
+    "valueOperatorAria": "Value operator for {{key}} (currently {{operator}})",
+    "valueOperatorMenu": "Choose value operator",
+    "operatorAbsolute": "Absolute",
+    "operatorAdd": "Add",
+    "operatorSubtract": "Subtract"
   },
   "logs": {
     "title": "Logs",
