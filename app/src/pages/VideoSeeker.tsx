@@ -100,6 +100,11 @@ const VideoSeeker = () => {
   const swipeFlushTimerRef = useRef<number | null>(null);
   const swipeLastXRef = useRef(0);
   const swipeLastTRef = useRef(0);
+  // The strip is measured with a ResizeObserver rather than a ref callback:
+  // a callback that calls setState on every render re-renders mid-gesture and
+  // makes the swipe drop its pointer events.
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const stripWidthRef = useRef(0);
   const optimisticRef = useRef<{
     key: string;
     positionMs?: number;
@@ -162,6 +167,28 @@ const VideoSeeker = () => {
     busyKeyRef.current = null;
     latestPositionRef.current = selectedVideo?.position_ms ?? 0;
   }, [selectedKey]);
+
+  // Measure the strip once it is laid out, and again whenever it is resized.
+  useEffect(() => {
+    const element = stripRef.current;
+    if (!element) {
+      return;
+    }
+    const measure = () => {
+      const width = element.clientWidth;
+      if (width > 0 && width !== stripWidthRef.current) {
+        stripWidthRef.current = width;
+        setStripWidth(width);
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const applyOptimistic = useCallback((next: VmixRuntimeState): VmixRuntimeState => {
     const drag = dragValueRef.current;
@@ -653,7 +680,8 @@ const VideoSeeker = () => {
       setSwipePx(px);
       // Swipe right scrubs forward, like dragging a timeline. The whole strip
       // spans JOG_TOTAL_FRAMES, so the pitch follows the rendered width.
-      const pitch = stripWidth > 0 ? stripWidth / JOG_TOTAL_FRAMES : DEFAULT_PIXELS_PER_FRAME;
+      const width = stripWidthRef.current;
+      const pitch = width > 0 ? width / JOG_TOTAL_FRAMES : DEFAULT_PIXELS_PER_FRAME;
       const frames = Math.round(px / pitch);
       const state = swipeStateRef.current;
       if (frames === state.frames) {
@@ -679,7 +707,7 @@ const VideoSeeker = () => {
         void flushSeek(video.key, target);
       }, SWIPE_FLUSH_MS);
     },
-    [flushSeek, frameMs, patchVideo, selectedVideo, stripWidth],
+    [flushSeek, frameMs, patchVideo, selectedVideo],
   );
 
   const onSwipeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -888,11 +916,7 @@ const VideoSeeker = () => {
               </Box>
 
               <Box
-                ref={(element: HTMLDivElement | null) => {
-                  if (element && element.clientWidth !== stripWidth) {
-                    setStripWidth(element.clientWidth);
-                  }
-                }}
+                ref={stripRef}
                 onPointerDown={onSwipeStart}
                 onPointerMove={onSwipeMove}
                 onPointerUp={endSwipe}

@@ -733,27 +733,25 @@ const ShortcutGenerator = () => {
     // A pasted/typed `+=` / `-=` prefix moves into the operator control so the
     // same value can round-trip through the URL builder.
     const parsed = splitOperator(rawValue);
-    startTransition(() => {
-      setSharedQueryParams(prev => prev.map(param => {
-        if (param.id !== paramId) {
-          return param;
-        }
-        return parsed.operator
-          ? { ...param, value: parsed.value, operator: parsed.operator }
-          : { ...param, value: rawValue };
-      }));
-    });
-  }, [startTransition]);
+    setSharedQueryParams(prev => prev.map(param => {
+      if (param.id !== paramId) {
+        return param;
+      }
+      return parsed.operator
+        ? { ...param, value: parsed.value, operator: parsed.operator }
+        : { ...param, value: rawValue };
+    }));
+  }, []);
 
   const handleSharedParamOperatorChange = useCallback((paramId: number, operator: ValueOperator) => {
-    startTransition(() => {
-      setSharedQueryParams(prev => prev.map(param =>
-        param.id === paramId
-          ? { ...param, operator }
-          : param
-      ));
-    });
-  }, [startTransition]);
+    // Not wrapped in startTransition: the operator is a discrete choice, and a
+    // deferred update lets the generated URL show the previous operator.
+    setSharedQueryParams(prev => prev.map(param =>
+      param.id === paramId
+        ? { ...param, operator }
+        : param
+    ));
+  }, []);
 
   // Apply queries from scraper data
   const handleApplyQueries = useCallback(() => {
