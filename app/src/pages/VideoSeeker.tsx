@@ -47,8 +47,11 @@ const PLAY_BUTTON_MIN_WIDTH = 112;
 // vMix does not expose each input's frame rate over HTTP. Steps are sent as
 // time offsets, so a nominal frame length is only used for the UI readout.
 const NOMINAL_FRAME_MS = 1000 / 30;
-// Swipe distance that equals one frame of movement.
-const PIXELS_PER_FRAME = 7;
+// The whole swipe strip spans this many frames, so one gesture covers a short
+// span instead of dozens of frames.
+const JOG_TOTAL_FRAMES = 10;
+// Fallback frame pitch before the strip has been measured.
+const DEFAULT_PIXELS_PER_FRAME = 7;
 
 function formatTime(ms: number): string {
   const safe = Math.max(0, Math.round(ms));
@@ -77,6 +80,7 @@ const VideoSeeker = () => {
   const [dragValue, setDragValue] = useState<number | null>(null);
   const [frameText, setFrameText] = useState<string | null>(null);
   const [swipePx, setSwipePx] = useState(0);
+  const [stripWidth, setStripWidth] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [pollInterval, setPollInterval] = useState(DEFAULT_POLL_MS);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -647,8 +651,10 @@ const VideoSeeker = () => {
         return;
       }
       setSwipePx(px);
-      // Swipe right scrubs forward, like dragging a timeline.
-      const frames = Math.round(px / PIXELS_PER_FRAME);
+      // Swipe right scrubs forward, like dragging a timeline. The whole strip
+      // spans JOG_TOTAL_FRAMES, so the pitch follows the rendered width.
+      const pitch = stripWidth > 0 ? stripWidth / JOG_TOTAL_FRAMES : DEFAULT_PIXELS_PER_FRAME;
+      const frames = Math.round(px / pitch);
       const state = swipeStateRef.current;
       if (frames === state.frames) {
         return;
@@ -673,7 +679,7 @@ const VideoSeeker = () => {
         void flushSeek(video.key, target);
       }, SWIPE_FLUSH_MS);
     },
-    [flushSeek, frameMs, patchVideo, selectedVideo],
+    [flushSeek, frameMs, patchVideo, selectedVideo, stripWidth],
   );
 
   const onSwipeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -882,6 +888,11 @@ const VideoSeeker = () => {
               </Box>
 
               <Box
+                ref={(element: HTMLDivElement | null) => {
+                  if (element && element.clientWidth !== stripWidth) {
+                    setStripWidth(element.clientWidth);
+                  }
+                }}
                 onPointerDown={onSwipeStart}
                 onPointerMove={onSwipeMove}
                 onPointerUp={endSwipe}
@@ -899,12 +910,20 @@ const VideoSeeker = () => {
                   border: 1,
                   borderColor: scrubbing ? 'primary.main' : 'divider',
                   transition: 'border-color 120ms ease',
-                  backgroundImage:
-                    'repeating-linear-gradient(90deg, rgba(128,128,128,0.28) 0px, rgba(128,128,128,0.28) 1px, transparent 1px, transparent ' +
-                    `${PIXELS_PER_FRAME}px)`,
-                  backgroundPositionX: `${swipePx}px`,
                 }}
               >
+                {/* One tick per frame across the strip; the ticks slide with the gesture. */}
+                <Box
+                  aria-hidden
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage:
+                      'repeating-linear-gradient(90deg, rgba(128,128,128,0.3) 0px, rgba(128,128,128,0.3) 1px, transparent 1px, transparent ' +
+                      `${stripWidth > 0 ? stripWidth / JOG_TOTAL_FRAMES : DEFAULT_PIXELS_PER_FRAME}px)`,
+                    backgroundPositionX: `${swipePx}px`,
+                  }}
+                />
                 <Box
                   sx={{
                     position: 'absolute',

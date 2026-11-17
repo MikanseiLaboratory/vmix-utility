@@ -3,6 +3,7 @@ import {
   composeValue,
   encodeValue,
   operatorLabel,
+  resolveValue,
   splitOperator,
 } from '../src/utils/queryValue';
 
@@ -61,6 +62,12 @@ describe('splitOperator', () => {
     expect(splitOperator('-=250')).toEqual({ operator: '-', value: '250' });
   });
 
+  test('accepts the encoded form so pasting a generated URL does not re-encode it', () => {
+    expect(splitOperator('%2B%3D1000')).toEqual({ operator: '+', value: '1000' });
+    expect(splitOperator('%2b%3d1000')).toEqual({ operator: '+', value: '1000' });
+    expect(splitOperator('%2D%3D250')).toEqual({ operator: '-', value: '250' });
+  });
+
   test('keeps negative absolute values', () => {
     expect(splitOperator('-1')).toEqual({ operator: '', value: '-1' });
     expect(splitOperator('-0.5')).toEqual({ operator: '', value: '-0.5' });
@@ -75,5 +82,38 @@ describe('splitOperator', () => {
     for (const operator of ['', '+', '-'] as const) {
       expect(splitOperator(composeValue('1234', operator))).toEqual({ operator, value: '1234' });
     }
+  });
+});
+
+describe('resolveValue', () => {
+  test('prefers an explicit operator', () => {
+    expect(resolveValue('1000', '+')).toEqual({ operator: '+', value: '1000' });
+  });
+
+  test('recovers an operator left in the value', () => {
+    expect(resolveValue('%2B%3D1000')).toEqual({ operator: '+', value: '1000' });
+    expect(resolveValue('+=1000')).toEqual({ operator: '+', value: '1000' });
+  });
+
+  test('leaves plain values alone', () => {
+    expect(resolveValue('1000')).toEqual({ operator: '', value: '1000' });
+  });
+});
+
+describe('double encoding', () => {
+  // vMix answers "Invalid Parameters" to `%252B%253D1000`, which is what a
+  // second encodeURIComponent pass produced when a generated URL was pasted
+  // back into the value field.
+  test('a pasted encoded offset is encoded exactly once', () => {
+    expect(encodeValue('%2B%3D1000')).toBe('%2B%3D1000');
+    expect(encodeValue('%2B%3D1000')).not.toBe('%252B%253D1000');
+  });
+
+  test('the operator control plus a plain value still encodes once', () => {
+    expect(encodeValue('1000', '+')).toBe('%2B%3D1000');
+  });
+
+  test('a raw pasted offset encodes once', () => {
+    expect(encodeValue('+=1000')).toBe('%2B%3D1000');
   });
 });
